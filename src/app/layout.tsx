@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Inter, Merriweather, Space_Grotesk } from 'next/font/google';
 import './globals.css';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const spaceGrotesk = Space_Grotesk({
@@ -17,20 +16,20 @@ const merriweather = Merriweather({
 
 export const metadata: Metadata = {
   title: 'Ainkwell',
-  description: 'Project base with Next.js and Firebase placeholders',
+  description: 'Open-source local-first writing app starter with Next.js',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
-}>): JSX.Element {
+}>): ReactElement {
   return (
     <html lang="en">
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${merriweather.variable} font-body antialiased`}
       >
-        <FirebaseClientProvider>{children}</FirebaseClientProvider>
+        {children}
       </body>
     </html>
   );
