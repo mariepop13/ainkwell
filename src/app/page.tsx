@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactElement } from 'react';
 
 export default function HomePage(): ReactElement {
@@ -11,6 +12,13 @@ export default function HomePage(): ReactElement {
             Start development with <code className="rounded bg-muted px-2 py-1">npm run dev</code>.
           </p>
           <p>Next step: build the local-first writing workspace and data model.</p>
+          <p>
+            Open the Story Bible at{' '}
+            <Link className="font-semibold text-primary hover:underline" href="/workspace/demo-project">
+              /workspace/demo-project
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </main>
