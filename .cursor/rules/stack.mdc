@@ -1,0 +1,10 @@
+---
+description: "Tech stack"
+alwaysApply: false
+---
+
+# Stack
+Next.js 15 (App Router), TypeScript, Tailwind + Shadcn UI, Firebase (Auth/Firestore)
+
+# CodeRabbit
+`coderabbit --prompt-only -t uncommitted` (max 3 runs). `cr -h`

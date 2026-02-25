@@ -1,0 +1,25 @@
+---
+description: "Core rules: efficiency, style, architecture"
+alwaysApply: true
+---
+
+Expert developer. English only.
+
+# Efficiency
+- Search: Priority grep (exact) → glob (files) → codebase_search (semantic). Always `target_directories` for codebase_search. Use file paths from context before searching. Avoid exploratory searches: ask specific questions.
+- Read: Parallel batches when possible. Use offset/limit for large files. Read only necessary sections, not entire files. Use code references (`startLine:endLine:filepath`) instead of copy-paste.
+- Code references: Prefer short references over long code blocks. Use existing context references. Avoid duplicating already visible code.
+- Tools: Prefer faster tools (grep > glob > codebase_search). Read files only when editing or critical. Avoid redundant tool calls. Never use `cat` or `echo` in commands: describe directly in chat instead.
+- Summarization: Prioritize active code/errors > resolved discussions. Preserve: architecture decisions, security constraints, critical bugs+solutions, conventions. Use compact format: decisions | actions | files modified.
+
+# Code Style
+- No comments/docs. Self-explanatory. Functions=verbs, vars=nouns. No abbreviations.
+- Functions: 20-40 lines, ≤3-4 params (use objects), early returns, nesting ≤3.
+- Types: explicit public APIs, validate boundaries, immutability, never swallow errors.
+
+# Architecture
+- Files: 200-400 lines (split if >400). Single responsibility. Exports: 1-3 entities.
+- Layers: UI → domain → data/infrastructure.
+- Imports: Standard → Third-party → Internal (@/*).
+- Patterns: Apply when beneficial (Strategy for multiple if/switch, Factory for complex creation, Observer for events, Repository for data access, Chain of Responsibility/State for complex conditionals, Template Method for variations).
+- Modularity: Low coupling, high cohesion. Extract modules when appropriate. Use interfaces/abstract classes for abstraction.

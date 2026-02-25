@@ -1,0 +1,9 @@
+---
+description: "Vitest testing standards"
+alwaysApply: false
+---
+
+# Testing
+- Before commit: `npm run test:ci`. Test non-trivial logic (Arrange/Act/Assert). Fast, isolated.
+- Before review: `npm run test:ci` + `coderabbit --prompt-only -t uncommitted`.
+- Structure: describe/it blocks, descriptive names, one concept per test.

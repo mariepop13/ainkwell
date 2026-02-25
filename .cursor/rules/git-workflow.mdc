@@ -1,0 +1,10 @@
+---
+description: "Git workflow and commit format"
+alwaysApply: false
+---
+
+# Git
+- Workflow: `feature/`, `bugfix/`, `hotfix/`, `release/vX.Y.Z`. Protected: `main`, `develop` (PRs). Verify branch first.
+- Format: `<gitmoji> <intent>: <description>` (feat/fix/refactor/style/perf/fire/docs/deploy/security/wip/build)
+- Commit bullets: exhaustive, list ALL changes, files/components/services, breaking/API/config changes, fixes/refactors separately, test updates, present tense, 3-5+ bullets.
+- PRs: Title = commit msg. Checklist: tests/lint/build/security.
