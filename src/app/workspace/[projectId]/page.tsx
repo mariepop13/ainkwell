@@ -42,13 +42,19 @@ function useProjectDetail(projectId: string | null, service: ProjectService): Pr
 
   useEffect(() => {
     if (!projectId) {
-      return;
+      return undefined;
     }
+
+    let isActive = true;
 
     const loadProject = async (): Promise<void> => {
       setState('loading');
       setErrorMessage(null);
       const loadedProject = await service.getProjectById(projectId);
+
+      if (!isActive) {
+        return;
+      }
 
       if (!loadedProject) {
         setProject(null);
@@ -61,10 +67,18 @@ function useProjectDetail(projectId: string | null, service: ProjectService): Pr
     };
 
     loadProject().catch((error: unknown) => {
+      if (!isActive) {
+        return;
+      }
+
       setProject(null);
       setErrorMessage(readErrorMessage(error));
       setState('error');
     });
+
+    return () => {
+      isActive = false;
+    };
   }, [projectId, service]);
 
   return { state, errorMessage, project };

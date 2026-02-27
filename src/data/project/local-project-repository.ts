@@ -49,7 +49,12 @@ function getStorage(): Storage | null {
     return null;
   }
 
-  return window.localStorage;
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.error('Local storage is not accessible in this environment.', error);
+    return null;
+  }
 }
 
 function parseStorageValue(rawValue: string | null): ProjectStorage {

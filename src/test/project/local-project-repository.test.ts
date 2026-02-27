@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { projectIdSchema, projectStorageSchema } from '@/domain/project/schemas';
 import {
   LocalProjectRepository,
@@ -9,6 +9,10 @@ describe('LocalProjectRepository', () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('creates and persists a valid project', async () => {
@@ -47,7 +51,6 @@ describe('LocalProjectRepository', () => {
     const projects = await repository.list();
     expect(projects.map((project) => project.id)).toEqual([projectAlpha.id, projectBeta.id]);
 
-    vi.useRealTimers();
   });
 
   it('updates a project and refreshes updatedAt', async () => {
@@ -72,7 +75,6 @@ describe('LocalProjectRepository', () => {
       new Date(createdProject.updatedAt).getTime(),
     );
 
-    vi.useRealTimers();
   });
 
   it('removes project safely and keeps remove idempotent for missing items', async () => {

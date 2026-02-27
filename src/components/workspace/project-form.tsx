@@ -120,8 +120,12 @@ function parseTargetWordCount(value: string): { parsedValue: number | null; erro
     return { parsedValue: null };
   }
 
-  const parsedValue = Number.parseInt(value, 10);
-  if (Number.isNaN(parsedValue) || parsedValue < 0) {
+  if (!/^\d+$/.test(value)) {
+    return { parsedValue: null, error: 'Target word count must be a non-negative integer.' };
+  }
+
+  const parsedValue = Number(value);
+  if (!Number.isSafeInteger(parsedValue) || parsedValue < 0) {
     return { parsedValue: null, error: 'Target word count must be a non-negative integer.' };
   }
 

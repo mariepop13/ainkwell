@@ -34,6 +34,19 @@ describe('WorkspacePage', () => {
     expect(screen.queryByTestId('workspace-empty')).not.toBeInTheDocument();
   });
 
+  it('rejects invalid target word count input', async () => {
+    const user = userEvent.setup();
+    render(<WorkspacePage />);
+
+    await screen.findByTestId('workspace-empty');
+    await user.type(screen.getByLabelText('Title'), 'Project strict number');
+    await user.type(screen.getByLabelText('Target words'), '12abc');
+    await user.click(screen.getByRole('button', { name: 'Create project' }));
+
+    expect(await screen.findByText('Target word count must be a non-negative integer.')).toBeInTheDocument();
+    expect(screen.queryByText('Project strict number')).not.toBeInTheDocument();
+  });
+
   it('edits an existing project', async () => {
     const user = userEvent.setup();
     render(<WorkspacePage />);
