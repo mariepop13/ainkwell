@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
 import Link from 'next/link';
+import type { ReactElement } from 'react';
 
 export default function HomePage(): ReactElement {
   return (
@@ -11,14 +11,25 @@ export default function HomePage(): ReactElement {
           <p>
             Start development with <code className="rounded bg-muted px-2 py-1">npm run dev</code>.
           </p>
-          <p>Next step: build the local-first writing workspace and data model.</p>
+          <p>Workspace is ready for local project management.</p>
+          <p>
+            <Link className="font-medium text-primary underline" href="/workspace">
+              Open Project Workspace
+            </Link>
+          </p>
         </div>
         <div className="mt-6 flex items-center gap-3">
           <Link
-            href="/workspace/demo-project"
+            href="/workspace"
             className="inline-flex rounded-md border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
           >
-            Open Demo Workspace
+            Open Project Workspace
+          </Link>
+          <Link
+            href="/workspace/demo-project/scene/scene-1"
+            className="inline-flex rounded-md border px-4 py-2 text-sm font-semibold"
+          >
+            Open Demo Scene
           </Link>
         </div>
       </div>
