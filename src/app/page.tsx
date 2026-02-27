@@ -11,13 +11,11 @@ export default function HomePage(): ReactElement {
           <p>
             Start development with <code className="rounded bg-muted px-2 py-1">npm run dev</code>.
           </p>
-          <p>Next step: build the local-first writing workspace and data model.</p>
+          <p>Workspace is ready for local project management.</p>
           <p>
-            Open the Story Bible at{' '}
-            <Link className="font-semibold text-primary hover:underline" href="/workspace/demo-project">
-              /workspace/demo-project
+            <Link className="font-medium text-primary underline" href="/workspace">
+              Open Project Workspace
             </Link>
-            .
           </p>
         </div>
       </div>

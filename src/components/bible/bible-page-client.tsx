@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { type ReactElement, useMemo, useState } from 'react';
+import { type ReactElement, useEffect, useMemo, useState } from 'react';
+import { createProjectService } from '@/application/project/project-service';
+import { BibleService, BibleValidationError } from '@/application/bible/bible-service';
 import { BibleEditor } from '@/components/bible/bible-editor';
 import { BibleList } from '@/components/bible/bible-list';
 import { RelationshipEditor } from '@/components/bible/relationship-editor';
 import { SceneLinks } from '@/components/bible/scene-links';
-import { BibleService, BibleValidationError } from '@/application/bible/bible-service';
 import { LocalBibleRepository } from '@/data/bible/local-bible-repository';
+import { LocalProjectRepository } from '@/data/project/local-project-repository';
+import { projectIdSchema } from '@/domain/project/schemas';
+import type { WritingProject } from '@/domain/project/types';
 import type {
   BibleEntityCategory,
   SaveBibleEntityInput,
@@ -17,6 +21,14 @@ import type {
 
 interface BiblePageClientProps {
   projectId: string;
+}
+
+type ProjectAccessState = 'loading' | 'invalid' | 'not-found' | 'error' | 'ready';
+
+interface ProjectAccess {
+  state: ProjectAccessState;
+  errorMessage: string | null;
+  project: WritingProject | null;
 }
 
 interface BibleDataSnapshot {
@@ -45,24 +57,19 @@ const EMPTY_ERRORS: ErrorState = {
   sceneLink: null,
 };
 
-function toErrorMessage(error: unknown): string {
+function readErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallbackMessage;
+}
+
+function toBibleErrorMessage(error: unknown): string {
   if (error instanceof BibleValidationError) {
     return error.message;
   }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'Unexpected error while updating the Story Bible';
-}
-
-function createService(projectId: string): BibleService | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  const repository = new LocalBibleRepository(window.localStorage);
-  const service = new BibleService(repository);
-  service.seedScenes(projectId);
-  return service;
+  return readErrorMessage(error, 'Unexpected error while updating the Story Bible');
 }
 
 function getSelectedEntity(entities: BibleDataSnapshot['entities'], selectedEntityId: string | null) {
@@ -75,14 +82,107 @@ function getSelectedEntity(entities: BibleDataSnapshot['entities'], selectedEnti
   return entities[0] ?? null;
 }
 
+function CenteredMessage({
+  title,
+  description,
+  tone = 'muted',
+}: {
+  title: string;
+  description: string;
+  tone?: 'muted' | 'destructive';
+}): ReactElement {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col items-start justify-center gap-3 px-4">
+      <h1 className="text-2xl font-headline font-semibold">{title}</h1>
+      <p className={`text-sm ${tone === 'destructive' ? 'text-destructive' : 'text-muted-foreground'}`}>
+        {description}
+      </p>
+      <Link className="text-sm font-medium text-primary underline" href="/workspace">
+        Back to workspace
+      </Link>
+    </main>
+  );
+}
+
+function useProjectAccess(projectId: string): ProjectAccess {
+  const projectService = useMemo(
+    () => createProjectService(new LocalProjectRepository()),
+    [],
+  );
+  const [state, setState] = useState<ProjectAccessState>('loading');
+  const [project, setProject] = useState<WritingProject | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const parsedProjectId = projectIdSchema.safeParse(projectId);
+    if (!parsedProjectId.success) {
+      setProject(null);
+      setErrorMessage(null);
+      setState('invalid');
+      return undefined;
+    }
+
+    let isActive = true;
+
+    const loadProject = async (): Promise<void> => {
+      setState('loading');
+      setErrorMessage(null);
+
+      try {
+        const loadedProject = await projectService.getProjectById(parsedProjectId.data);
+        if (!isActive) {
+          return;
+        }
+
+        if (!loadedProject) {
+          setProject(null);
+          setState('not-found');
+          return;
+        }
+
+        setProject(loadedProject);
+        setState('ready');
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setProject(null);
+        setErrorMessage(readErrorMessage(error, 'Unable to open project.'));
+        setState('error');
+      }
+    };
+
+    void loadProject();
+
+    return () => {
+      isActive = false;
+    };
+  }, [projectId, projectService]);
+
+  return { state, errorMessage, project };
+}
+
+function createBibleService(): BibleService | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return new BibleService(new LocalBibleRepository(window.localStorage));
+}
+
 export function BiblePageClient({ projectId }: BiblePageClientProps): ReactElement {
+  const projectAccess = useProjectAccess(projectId);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [isCreatingEntity, setIsCreatingEntity] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<BibleEntityCategory | 'all'>('all');
   const [errors, setErrors] = useState<ErrorState>(EMPTY_ERRORS);
   const [, setDataRevision] = useState(0);
-  const service = useMemo(() => createService(projectId), [projectId]);
+  const bibleService = useMemo(
+    () => (projectAccess.state === 'ready' ? createBibleService() : null),
+    [projectAccess.state],
+  );
   const entityFilters = useMemo(
     () => ({
       search: searchValue,
@@ -91,14 +191,24 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
     [searchValue, categoryFilter],
   );
 
-  const data: BibleDataSnapshot = service
-    ? {
-        entities: service.listEntities(projectId, entityFilters),
-        relationships: service.listRelationships(projectId),
-        sceneLinks: service.listSceneLinks(projectId),
-        scenes: service.listScenes(projectId),
-      }
-    : EMPTY_BIBLE_DATA;
+  useEffect(() => {
+    if (!bibleService || !projectAccess.project) {
+      return;
+    }
+
+    bibleService.seedScenes(projectAccess.project.id);
+    setDataRevision((currentRevision) => currentRevision + 1);
+  }, [bibleService, projectAccess.project]);
+
+  const data: BibleDataSnapshot =
+    bibleService && projectAccess.project
+      ? {
+          entities: bibleService.listEntities(projectAccess.project.id, entityFilters),
+          relationships: bibleService.listRelationships(projectAccess.project.id),
+          sceneLinks: bibleService.listSceneLinks(projectAccess.project.id),
+          scenes: bibleService.listScenes(projectAccess.project.id),
+        }
+      : EMPTY_BIBLE_DATA;
 
   const selectedEntity = useMemo(() => {
     if (isCreatingEntity) {
@@ -117,22 +227,23 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
   };
 
   const setError = (key: keyof ErrorState, error: unknown): void => {
-    setErrors((currentErrors) => ({ ...currentErrors, [key]: toErrorMessage(error) }));
+    setErrors((currentErrors) => ({ ...currentErrors, [key]: toBibleErrorMessage(error) }));
   };
 
-  const withService = (callback: (nextService: BibleService) => void): void => {
-    if (!service) {
+  const withBibleService = (callback: (service: BibleService, validProjectId: string) => void): void => {
+    if (!bibleService || !projectAccess.project) {
       return;
     }
-    callback(service);
+
+    callback(bibleService, projectAccess.project.id);
     triggerRefresh();
   };
 
   const handleSaveEntity = async (input: SaveBibleEntityInput): Promise<void> => {
     try {
-      withService((nextService) => {
+      withBibleService((service, validProjectId) => {
         clearError('entity');
-        const savedEntity = nextService.saveEntity(input);
+        const savedEntity = service.saveEntity({ ...input, projectId: validProjectId });
         setSelectedEntityId(savedEntity.id);
         setIsCreatingEntity(false);
       });
@@ -143,9 +254,9 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
 
   const handleDeleteEntity = async (entityId: string): Promise<void> => {
     try {
-      withService((nextService) => {
+      withBibleService((service, validProjectId) => {
         clearError('entity');
-        nextService.deleteEntity(projectId, entityId);
+        service.deleteEntity(validProjectId, entityId);
         if (activeSelectedEntityId === entityId) {
           setSelectedEntityId(null);
           setIsCreatingEntity(false);
@@ -158,9 +269,9 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
 
   const handleSaveRelationship = async (input: SaveBibleRelationshipInput): Promise<void> => {
     try {
-      withService((nextService) => {
+      withBibleService((service, validProjectId) => {
         clearError('relationship');
-        nextService.saveRelationship(input);
+        service.saveRelationship({ ...input, projectId: validProjectId });
       });
     } catch (error) {
       setError('relationship', error);
@@ -168,17 +279,17 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
   };
 
   const handleDeleteRelationship = async (relationshipId: string): Promise<void> => {
-    withService((nextService) => {
+    withBibleService((service, validProjectId) => {
       clearError('relationship');
-      nextService.deleteRelationship(projectId, relationshipId);
+      service.deleteRelationship(validProjectId, relationshipId);
     });
   };
 
   const handleSaveSceneLink = async (input: SaveBibleSceneLinkInput): Promise<void> => {
     try {
-      withService((nextService) => {
+      withBibleService((service, validProjectId) => {
         clearError('sceneLink');
-        nextService.saveSceneLink(input);
+        service.saveSceneLink({ ...input, projectId: validProjectId });
       });
     } catch (error) {
       setError('sceneLink', error);
@@ -186,16 +297,52 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
   };
 
   const handleDeleteSceneLink = async (sceneLinkId: string): Promise<void> => {
-    withService((nextService) => {
+    withBibleService((service, validProjectId) => {
       clearError('sceneLink');
-      nextService.deleteSceneLink(projectId, sceneLinkId);
+      service.deleteSceneLink(validProjectId, sceneLinkId);
     });
   };
 
-  if (!service) {
+  if (projectAccess.state === 'invalid') {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-4 py-10">
-        <p className="text-muted-foreground">Loading Story Bible...</p>
+      <CenteredMessage
+        title="Invalid project id"
+        description="The Story Bible route requires a valid project identifier."
+      />
+    );
+  }
+
+  if (projectAccess.state === 'loading') {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
+        <p>Loading project...</p>
+      </main>
+    );
+  }
+
+  if (projectAccess.state === 'not-found') {
+    return (
+      <CenteredMessage
+        title="Project not found"
+        description="This project does not exist in local storage."
+      />
+    );
+  }
+
+  if (projectAccess.state === 'error') {
+    return (
+      <CenteredMessage
+        title="Unable to open Story Bible"
+        description={projectAccess.errorMessage ?? 'Unable to open this project Story Bible.'}
+        tone="destructive"
+      />
+    );
+  }
+
+  if (!projectAccess.project || !bibleService) {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
+        <p>Loading Story Bible...</p>
       </main>
     );
   }
@@ -204,16 +351,18 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-10">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          <Link href="/" className="hover:underline">
-            Home
-          </Link>
-          <span>/</span>
-          <Link href={`/workspace/${projectId}`} className="hover:underline">
+          <Link href="/workspace" className="hover:underline">
             Workspace
           </Link>
+          <span>/</span>
+          <Link href={`/workspace/${projectAccess.project.id}`} className="hover:underline">
+            {projectAccess.project.title}
+          </Link>
+          <span>/</span>
+          <span>Story Bible</span>
         </div>
         <h1 className="text-3xl font-headline font-bold">Story Bible</h1>
-        <p className="text-sm text-muted-foreground">Project: {projectId}</p>
+        <p className="text-sm text-muted-foreground">Project: {projectAccess.project.title}</p>
       </header>
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         <BibleList
@@ -235,14 +384,14 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
         <div className="space-y-4">
           <BibleEditor
             key={activeSelectedEntityId ?? 'new-entity'}
-            projectId={projectId}
+            projectId={projectAccess.project.id}
             selectedEntity={selectedEntity}
             errorMessage={errors.entity}
             onSave={handleSaveEntity}
             onDelete={handleDeleteEntity}
           />
           <RelationshipEditor
-            projectId={projectId}
+            projectId={projectAccess.project.id}
             entities={data.entities}
             relationships={data.relationships}
             selectedEntityId={activeSelectedEntityId}
@@ -251,7 +400,7 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
             onDelete={handleDeleteRelationship}
           />
           <SceneLinks
-            projectId={projectId}
+            projectId={projectAccess.project.id}
             entities={data.entities}
             scenes={data.scenes}
             sceneLinks={data.sceneLinks}

@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BiblePageClient } from '@/components/bible/bible-page-client';
+import { LocalProjectRepository } from '@/data/project/local-project-repository';
 
 describe('BiblePage', () => {
   beforeEach(() => {
@@ -10,7 +11,12 @@ describe('BiblePage', () => {
 
   it('creates entities, relationships, and scene links with persisted state after reload', async () => {
     const user = userEvent.setup();
-    const projectId = 'demo-project';
+    const projectRepository = new LocalProjectRepository();
+    const project = await projectRepository.create({
+      title: 'Demo Project',
+      description: 'Project used for Story Bible integration tests.',
+    });
+    const projectId = project.id;
     const { unmount } = render(<BiblePageClient projectId={projectId} />);
 
     const nameInput = await screen.findByLabelText('Name');
@@ -68,5 +74,23 @@ describe('BiblePage', () => {
     };
     expect(persistedData.relationships).toHaveLength(1);
     expect(persistedData.sceneLinks).toHaveLength(1);
+  });
+
+  it('shows invalid id state when projectId is malformed', async () => {
+    render(<BiblePageClient projectId="demo-project" />);
+
+    expect(await screen.findByText('Invalid project id')).toBeInTheDocument();
+    expect(
+      screen.getByText('The Story Bible route requires a valid project identifier.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows project not found state when UUID does not exist', async () => {
+    render(<BiblePageClient projectId="2f2b4bd9-114f-4c73-99ba-28f274d7f00b" />);
+
+    expect(await screen.findByText('Project not found')).toBeInTheDocument();
+    expect(
+      screen.getByText('This project does not exist in local storage.'),
+    ).toBeInTheDocument();
   });
 });
