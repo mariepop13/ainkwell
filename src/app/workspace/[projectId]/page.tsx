@@ -352,7 +352,7 @@ export default function WorkspaceProjectPage(): ReactElement {
       });
       await detail.reload();
     } catch (error) {
-      setSceneActionError(toErrorMessage(error, 'Unable to create scene.'));
+      setSceneActionError(sceneService.toUserErrorMessage(error));
     } finally {
       setIsCreatingScene(false);
     }

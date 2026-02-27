@@ -25,6 +25,7 @@ type SceneStateViewProps = {
   projectId: string;
   sceneId: string;
   loadState: UseSceneEditorResult['loadState'];
+  saveError: string | null;
 };
 
 const getLoadingSceneView = (): ReactElement => (
@@ -64,6 +65,23 @@ const getSceneNotFoundView = (props: Pick<SceneStateViewProps, 'projectId' | 'sc
   </main>
 );
 
+const getSceneLoadErrorView = (
+  props: Pick<SceneStateViewProps, 'projectId' | 'saveError'>,
+): ReactElement => (
+  <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-8">
+    <div className="space-y-4 rounded-xl border bg-card p-6 text-card-foreground">
+      <h1 className="text-2xl font-headline font-bold">Unable to load scene</h1>
+      <p className="text-muted-foreground">{props.saveError ?? 'An unexpected error occurred.'}</p>
+      <Link
+        href={`/workspace/${props.projectId}`}
+        className="inline-flex rounded-md border px-3 py-2 text-sm font-medium"
+      >
+        Back to workspace
+      </Link>
+    </div>
+  </main>
+);
+
 const getSceneStateView = (props: SceneStateViewProps): ReactElement | null => {
   if (props.loadState === 'loading') {
     return getLoadingSceneView();
@@ -75,6 +93,10 @@ const getSceneStateView = (props: SceneStateViewProps): ReactElement | null => {
 
   if (props.loadState === 'scene-not-found') {
     return getSceneNotFoundView(props);
+  }
+
+  if (props.loadState === 'error') {
+    return getSceneLoadErrorView(props);
   }
 
   return null;
@@ -182,6 +204,7 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     projectId: props.projectId,
     sceneId: props.sceneId,
     loadState: sceneEditor.loadState,
+    saveError: sceneEditor.saveError,
   });
 
   if (stateView) {

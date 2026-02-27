@@ -81,7 +81,19 @@ export const writingProjectSchema = z
     scenes: z.record(projectSceneSchema),
   })
   .superRefine((value, context) => {
+    const orderedSceneIdentifiers = new Set<string>();
+
     for (const sceneId of value.sceneOrder) {
+      if (orderedSceneIdentifiers.has(sceneId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate scene reference for ${sceneId}.`,
+          path: ['sceneOrder'],
+        });
+        continue;
+      }
+
+      orderedSceneIdentifiers.add(sceneId);
       if (!(sceneId in value.scenes)) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -92,6 +104,14 @@ export const writingProjectSchema = z
     }
 
     for (const [sceneId, scene] of Object.entries(value.scenes)) {
+      if (!orderedSceneIdentifiers.has(sceneId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Scene ${sceneId} is missing from sceneOrder.`,
+          path: ['scenes', sceneId],
+        });
+      }
+
       if (scene.id !== sceneId) {
         context.addIssue({
           code: z.ZodIssueCode.custom,

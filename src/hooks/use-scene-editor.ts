@@ -158,32 +158,44 @@ function useLoadScene(
     const loadScene = async (): Promise<void> => {
       patchViewState({ loadState: 'loading', saveError: null });
 
-      const result = await input.service.loadScene({
-        projectId: input.projectId,
-        sceneId: input.sceneId,
-      });
+      try {
+        const result = await input.service.loadScene({
+          projectId: input.projectId,
+          sceneId: input.sceneId,
+        });
 
-      if (!runtimeRefs.isMountedRef.current) {
-        return;
+        if (!runtimeRefs.isMountedRef.current) {
+          return;
+        }
+
+        if (result.state === 'project-not-found') {
+          applyUnavailableScene(runtimeRefs, replaceViewState, 'project-not-found');
+          return;
+        }
+
+        if (result.state === 'scene-not-found') {
+          applyUnavailableScene(runtimeRefs, replaceViewState, 'scene-not-found');
+          return;
+        }
+
+        applyLoadedScene({
+          runtimeRefs,
+          replaceViewState,
+          scene: result.scene,
+          previousSceneId: result.previousSceneId,
+          nextSceneId: result.nextSceneId,
+        });
+      } catch (error) {
+        if (!runtimeRefs.isMountedRef.current) {
+          return;
+        }
+
+        patchViewState({
+          loadState: 'error',
+          isSaving: false,
+          saveError: input.service.toUserErrorMessage(error),
+        });
       }
-
-      if (result.state === 'project-not-found') {
-        applyUnavailableScene(runtimeRefs, replaceViewState, 'project-not-found');
-        return;
-      }
-
-      if (result.state === 'scene-not-found') {
-        applyUnavailableScene(runtimeRefs, replaceViewState, 'scene-not-found');
-        return;
-      }
-
-      applyLoadedScene({
-        runtimeRefs,
-        replaceViewState,
-        scene: result.scene,
-        previousSceneId: result.previousSceneId,
-        nextSceneId: result.nextSceneId,
-      });
     };
 
     void loadScene();

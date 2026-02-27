@@ -303,3 +303,25 @@ describe('useSceneEditor save recovery', () => {
     expect(result.current.scene?.content).toBe('second version');
   });
 });
+
+describe('useSceneEditor load state', () => {
+  it('sets a terminal error state when scene loading throws', async () => {
+    const service = createServiceDouble({});
+    const loadFailure = new Error('LOAD_FAILURE');
+    vi.mocked(service.loadScene).mockRejectedValueOnce(loadFailure);
+    vi.mocked(service.toUserErrorMessage).mockReturnValueOnce('Unable to load scene.');
+
+    const { result } = renderHook(() =>
+      useSceneEditor({
+        projectId: 'demo-project',
+        sceneId: 'scene-1',
+        service,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loadState).toBe('error');
+    });
+    expect(result.current.saveError).toBe('Unable to load scene.');
+  });
+});

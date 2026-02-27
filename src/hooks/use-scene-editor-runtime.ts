@@ -3,7 +3,12 @@ import type { MutableRefObject } from 'react';
 import type { SceneEditorServicePort } from '@/application/scene/scene-editor-service';
 import type { Scene, SceneStatus } from '@/domain/scene/types';
 
-export type SceneEditorLoadState = 'loading' | 'ready' | 'project-not-found' | 'scene-not-found';
+export type SceneEditorLoadState =
+  | 'loading'
+  | 'ready'
+  | 'project-not-found'
+  | 'scene-not-found'
+  | 'error';
 
 export type SceneViewState = {
   scene: Scene | null;
@@ -179,13 +184,12 @@ export const applySaveSuccess = (input: SaveSuccessInput): void => {
     return;
   }
 
-  assignRef(runtimeRefs.latestAppliedRequestRef, requestId);
-  patchViewState({ saveError: null });
-
   if (requestId !== runtimeRefs.latestRequestRef.current) {
     return;
   }
 
+  assignRef(runtimeRefs.latestAppliedRequestRef, requestId);
+  patchViewState({ saveError: null });
   assignRef(runtimeRefs.sceneRef, savedScene);
   patchViewState({ scene: savedScene, lastSavedAt: savedScene.updatedAt });
 

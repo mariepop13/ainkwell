@@ -46,7 +46,7 @@ const createSceneInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
 });
 
-const asProjectNotFound = (projectId: string): Error => new Error(`Project not found: ${projectId}`);
+const asProjectNotFound = (): Error => new Error(projectNotFoundCode);
 
 export class LocalProjectRepository implements ProjectRepository {
   public async list(): Promise<WritingProject[]> {
@@ -100,7 +100,7 @@ export class LocalProjectRepository implements ProjectRepository {
     const targetProject = projectStorage.projects.find((project) => project.id === validProjectId);
 
     if (!targetProject) {
-      throw asProjectNotFound(validProjectId);
+      throw asProjectNotFound();
     }
 
     const updatedProject = withRecalculatedStats(

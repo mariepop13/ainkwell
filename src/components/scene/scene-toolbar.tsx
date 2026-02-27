@@ -75,7 +75,11 @@ function SceneSaveError(props: SceneSaveErrorProps): ReactElement | null {
   }
 
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="mt-3 flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    >
       <span>{props.saveError}</span>
       <button
         type="button"

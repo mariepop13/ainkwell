@@ -138,4 +138,19 @@ describe('SceneEditorShell', () => {
     expect(saveScene).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('Unable to save scene. Retry.')).not.toBeInTheDocument();
   });
+
+  it('shows terminal load error view when loading fails', async () => {
+    const service = createServiceDouble({});
+    vi.mocked(service.loadScene).mockRejectedValueOnce(new Error('LOAD_FAILURE'));
+    vi.mocked(service.toUserErrorMessage).mockReturnValueOnce('Unable to load scene.');
+
+    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} />);
+
+    expect(await screen.findByText('Unable to load scene')).toBeInTheDocument();
+    expect(screen.getByText('Unable to load scene.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to workspace' })).toHaveAttribute(
+      'href',
+      '/workspace/demo-project',
+    );
+  });
 });

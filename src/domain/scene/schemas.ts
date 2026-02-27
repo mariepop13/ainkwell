@@ -2,8 +2,12 @@ import { z } from 'zod';
 
 export const maxSceneContentLength = 200000;
 
+const uuidV4Pattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const sceneIdSchema = z.string().min(1);
-const projectIdSchema = z.string().min(1);
+const projectIdSchema = z.string().trim().regex(uuidV4Pattern, 'Invalid project id');
+const legacyProjectIdSchema = z.string().trim().min(1);
 const sceneContentSchema = z.string().max(maxSceneContentLength, {
   message: `Scene content exceeds ${maxSceneContentLength} characters.`,
 });
@@ -36,15 +40,36 @@ export const saveSceneInputSchema = z.object({
   updatedAt: updatedAtSchema,
 });
 
+const legacySceneSchema = z.object({
+  id: sceneIdSchema,
+  projectId: legacyProjectIdSchema,
+  title: z.string().min(1),
+  content: sceneContentSchema,
+  status: sceneStatusSchema,
+  updatedAt: updatedAtSchema,
+});
+
 export const projectStoreSchema = z
   .object({
-    id: projectIdSchema,
+    id: legacyProjectIdSchema,
     title: z.string().min(1),
     sceneOrder: z.array(sceneIdSchema),
-    scenes: z.record(sceneSchema),
+    scenes: z.record(legacySceneSchema),
   })
   .superRefine((value, context) => {
+    const orderedIds = new Set<string>();
+
     for (const sceneId of value.sceneOrder) {
+      if (orderedIds.has(sceneId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate scene reference for ${sceneId}.`,
+          path: ['sceneOrder'],
+        });
+        continue;
+      }
+
+      orderedIds.add(sceneId);
       if (!(sceneId in value.scenes)) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -55,6 +80,14 @@ export const projectStoreSchema = z
     }
 
     for (const [sceneId, scene] of Object.entries(value.scenes)) {
+      if (!orderedIds.has(sceneId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Scene ${sceneId} is not present in sceneOrder.`,
+          path: ['scenes', sceneId],
+        });
+      }
+
       if (scene.id !== sceneId) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
