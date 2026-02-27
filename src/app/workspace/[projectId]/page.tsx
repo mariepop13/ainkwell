@@ -165,14 +165,7 @@ function ProjectDetailContent({ project }: { project: WritingProject }): ReactEl
   );
 }
 
-export default function WorkspaceProjectPage(): ReactElement {
-  const params = useParams<{ projectId: string }>();
-  const service = useMemo(() => createProjectService(new LocalProjectRepository()), []);
-  const projectIdParam = getProjectIdParam(params.projectId);
-  const parsedProjectId = projectIdSchema.safeParse(projectIdParam);
-  const projectId = parsedProjectId.success ? parsedProjectId.data : null;
-  const { state, errorMessage, project } = useProjectDetail(projectId, service);
-
+function renderWorkspaceProjectState(result: ProjectDetailResult, projectId: string | null): ReactElement {
   if (!projectId) {
     return (
       <CenteredMessage
@@ -182,7 +175,7 @@ export default function WorkspaceProjectPage(): ReactElement {
     );
   }
 
-  if (state === 'loading') {
+  if (result.state === 'loading') {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
         <p>Loading project...</p>
@@ -190,23 +183,23 @@ export default function WorkspaceProjectPage(): ReactElement {
     );
   }
 
-  if (state === 'not-found') {
+  if (result.state === 'not-found') {
     return (
       <CenteredMessage description="This project does not exist in local storage." title="Project not found" />
     );
   }
 
-  if (state === 'error') {
+  if (result.state === 'error') {
     return (
       <CenteredMessage
-        description={errorMessage ?? 'Unable to open project.'}
+        description={result.errorMessage ?? 'Unable to open project.'}
         title="Unable to open project"
         tone="destructive"
       />
     );
   }
 
-  if (!project) {
+  if (!result.project) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
         <p>Unable to load project.</p>
@@ -214,5 +207,15 @@ export default function WorkspaceProjectPage(): ReactElement {
     );
   }
 
-  return <ProjectDetailContent project={project} />;
+  return <ProjectDetailContent project={result.project} />;
+}
+
+export default function WorkspaceProjectPage(): ReactElement {
+  const params = useParams<{ projectId: string }>();
+  const service = useMemo(() => createProjectService(new LocalProjectRepository()), []);
+  const projectIdParam = getProjectIdParam(params.projectId);
+  const parsedProjectId = projectIdSchema.safeParse(projectIdParam);
+  const projectId = parsedProjectId.success ? parsedProjectId.data : null;
+  const projectDetail = useProjectDetail(projectId, service);
+  return renderWorkspaceProjectState(projectDetail, projectId);
 }

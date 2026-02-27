@@ -105,6 +105,7 @@ function CenteredMessage({
 }
 
 function useProjectAccess(projectId: string): ProjectAccess {
+  const parsedProjectId = useMemo(() => projectIdSchema.safeParse(projectId), [projectId]);
   const projectService = useMemo(
     () => createProjectService(new LocalProjectRepository()),
     [],
@@ -114,11 +115,7 @@ function useProjectAccess(projectId: string): ProjectAccess {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const parsedProjectId = projectIdSchema.safeParse(projectId);
     if (!parsedProjectId.success) {
-      setProject(null);
-      setErrorMessage(null);
-      setState('invalid');
       return undefined;
     }
 
@@ -158,17 +155,23 @@ function useProjectAccess(projectId: string): ProjectAccess {
     return () => {
       isActive = false;
     };
-  }, [projectId, projectService]);
+  }, [parsedProjectId, projectService]);
+
+  if (!parsedProjectId.success) {
+    return { state: 'invalid', errorMessage: null, project: null };
+  }
 
   return { state, errorMessage, project };
 }
 
-function createBibleService(): BibleService | null {
+function createBibleService(projectId: string): BibleService | null {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  return new BibleService(new LocalBibleRepository(window.localStorage));
+  const service = new BibleService(new LocalBibleRepository(window.localStorage));
+  service.seedScenes(projectId);
+  return service;
 }
 
 export function BiblePageClient({ projectId }: BiblePageClientProps): ReactElement {
@@ -180,8 +183,11 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
   const [errors, setErrors] = useState<ErrorState>(EMPTY_ERRORS);
   const [, setDataRevision] = useState(0);
   const bibleService = useMemo(
-    () => (projectAccess.state === 'ready' ? createBibleService() : null),
-    [projectAccess.state],
+    () =>
+      projectAccess.state === 'ready' && projectAccess.project
+        ? createBibleService(projectAccess.project.id)
+        : null,
+    [projectAccess.project, projectAccess.state],
   );
   const entityFilters = useMemo(
     () => ({
@@ -190,15 +196,6 @@ export function BiblePageClient({ projectId }: BiblePageClientProps): ReactEleme
     }),
     [searchValue, categoryFilter],
   );
-
-  useEffect(() => {
-    if (!bibleService || !projectAccess.project) {
-      return;
-    }
-
-    bibleService.seedScenes(projectAccess.project.id);
-    setDataRevision((currentRevision) => currentRevision + 1);
-  }, [bibleService, projectAccess.project]);
 
   const data: BibleDataSnapshot =
     bibleService && projectAccess.project
