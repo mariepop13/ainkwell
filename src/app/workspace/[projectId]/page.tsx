@@ -2,10 +2,13 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { ReactElement } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import type { Dispatch, ReactElement, SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { createProjectService } from '@/application/project/project-service';
 import type { ProjectService } from '@/application/project/project-service';
+import { SceneEditorService } from '@/application/scene/scene-editor-service';
+import { SceneStatusBadge } from '@/components/scene/scene-status-badge';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { projectIdSchema } from '@/domain/project/schemas';
 import type { WritingProject } from '@/domain/project/types';
@@ -17,71 +20,144 @@ type ProjectDetailResult = {
   state: DetailState;
   errorMessage: string | null;
   project: WritingProject | null;
+  reload: () => Promise<void>;
 };
 
-function getProjectIdParam(input: string | string[] | undefined): string {
+type SceneActions = {
+  isCreatingScene: boolean;
+  sceneActionError: string | null;
+  createScene: () => Promise<void>;
+};
+
+type ProjectLoadHandlers = {
+  start: () => void;
+  applyReady: (project: WritingProject) => void;
+  applyNotFound: () => void;
+  applyError: (error: unknown) => void;
+  shouldApply: () => boolean;
+};
+
+const getProjectIdParam = (input: string | string[] | undefined): string => {
   if (Array.isArray(input)) {
     return input[0] ?? '';
   }
 
   return input ?? '';
-}
+};
 
-function readErrorMessage(error: unknown): string {
+const toErrorMessage = (error: unknown, fallbackMessage: string): string => {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
 
-  return 'Unable to load this project.';
-}
+  return fallbackMessage;
+};
+
+const getNextSceneTitle = (project: WritingProject): string => `Scene ${project.sceneOrder.length + 1}`;
+
+const loadProjectDetail = async (
+  projectId: string,
+  service: ProjectService,
+  handlers: ProjectLoadHandlers,
+): Promise<void> => {
+  handlers.start();
+
+  try {
+    const loadedProject = await service.getProjectById(projectId);
+    if (!handlers.shouldApply()) {
+      return;
+    }
+
+    if (!loadedProject) {
+      handlers.applyNotFound();
+      return;
+    }
+
+    handlers.applyReady(loadedProject);
+  } catch (error) {
+    if (!handlers.shouldApply()) {
+      return;
+    }
+
+    handlers.applyError(error);
+  }
+};
+
+const useProjectIdParam = (): string | null => {
+  const params = useParams<{ projectId: string }>();
+  const projectIdParam = getProjectIdParam(params.projectId);
+  const parsedProjectId = projectIdSchema.safeParse(projectIdParam);
+  return parsedProjectId.success ? parsedProjectId.data : null;
+};
+
+const useProjectLoadHandlers = (
+  setState: Dispatch<SetStateAction<DetailState>>,
+  setErrorMessage: Dispatch<SetStateAction<string | null>>,
+  setProject: Dispatch<SetStateAction<WritingProject | null>>,
+): Omit<ProjectLoadHandlers, 'shouldApply'> => {
+  const start = useCallback((): void => {
+    setState('loading');
+    setErrorMessage(null);
+  }, [setErrorMessage, setState]);
+  const applyReady = useCallback((loadedProject: WritingProject): void => {
+    setProject(loadedProject);
+    setState('ready');
+  }, [setProject, setState]);
+  const applyNotFound = useCallback((): void => {
+    setProject(null);
+    setState('not-found');
+  }, [setProject, setState]);
+  const applyError = useCallback((error: unknown): void => {
+    setProject(null);
+    setErrorMessage(toErrorMessage(error, 'Unable to load this project.'));
+    setState('error');
+  }, [setErrorMessage, setProject, setState]);
+
+  return { start, applyReady, applyNotFound, applyError };
+};
 
 function useProjectDetail(projectId: string | null, service: ProjectService): ProjectDetailResult {
   const [state, setState] = useState<DetailState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [project, setProject] = useState<WritingProject | null>(null);
+  const { start, applyReady, applyNotFound, applyError } = useProjectLoadHandlers(
+    setState,
+    setErrorMessage,
+    setProject,
+  );
 
-  useEffect(() => {
+  const reload = useCallback(async (): Promise<void> => {
     if (!projectId) {
-      return undefined;
+      return;
     }
 
-    let isActive = true;
-
-    const loadProject = async (): Promise<void> => {
-      setState('loading');
-      setErrorMessage(null);
-      const loadedProject = await service.getProjectById(projectId);
-
-      if (!isActive) {
-        return;
-      }
-
-      if (!loadedProject) {
-        setProject(null);
-        setState('not-found');
-        return;
-      }
-
-      setProject(loadedProject);
-      setState('ready');
-    };
-
-    loadProject().catch((error: unknown) => {
-      if (!isActive) {
-        return;
-      }
-
-      setProject(null);
-      setErrorMessage(readErrorMessage(error));
-      setState('error');
+    await loadProjectDetail(projectId, service, {
+      start,
+      applyReady,
+      applyNotFound,
+      applyError,
+      shouldApply: () => true,
     });
+  }, [applyError, applyNotFound, applyReady, projectId, service, start]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (projectId) {
+      void loadProjectDetail(projectId, service, {
+        start,
+        applyReady,
+        applyNotFound,
+        applyError,
+        shouldApply: () => isMounted,
+      });
+    }
 
     return () => {
-      isActive = false;
+      isMounted = false;
     };
-  }, [projectId, service]);
+  }, [applyError, applyNotFound, applyReady, projectId, service, start]);
 
-  return { state, errorMessage, project };
+  return { state, errorMessage, project, reload };
 }
 
 function CenteredMessage({
@@ -119,26 +195,79 @@ function ProjectStats({ project }: { project: WritingProject }): ReactElement {
   );
 }
 
-function ProjectPlaceholders(): ReactElement {
+function SceneList({ projectId, project }: { projectId: string; project: WritingProject }): ReactElement {
+  const orderedScenes = project.sceneOrder
+    .map((sceneId) => project.scenes[sceneId])
+    .filter((scene): scene is NonNullable<typeof scene> => Boolean(scene));
+
+  if (orderedScenes.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        No scenes yet. Create your first scene.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-3">
+      {orderedScenes.map((scene) => (
+        <li key={scene.id} className="rounded-lg border p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-2">
+              <h3 className="text-lg font-headline font-semibold">{scene.title}</h3>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <SceneStatusBadge status={scene.status} />
+                <span>Updated: {formatProjectDate(scene.updatedAt)}</span>
+              </div>
+            </div>
+            <Link
+              href={`/workspace/${projectId}/scene/${scene.id}`}
+              className="inline-flex rounded-md border px-3 py-2 text-sm font-medium"
+            >
+              Open
+            </Link>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ProjectScenesSection({ projectId, project, actions }: {
+  project: WritingProject;
+  projectId: string;
+  actions: SceneActions;
+}): ReactElement {
   return (
     <section className="space-y-3">
-      <div className="rounded-lg border border-dashed p-4">
-        <h2 className="text-xl font-headline font-semibold">Scene Editor (placeholder)</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The markdown scene editor will consume this project id and settings in a future branch.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-headline font-semibold">Scenes</h2>
+        <button
+          type="button"
+          onClick={() => {
+            void actions.createScene();
+          }}
+          disabled={actions.isCreatingScene}
+          className="inline-flex rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {actions.isCreatingScene ? 'Creating...' : 'Create scene'}
+        </button>
       </div>
-      <div className="rounded-lg border border-dashed p-4">
-        <h2 className="text-xl font-headline font-semibold">Story Bible (placeholder)</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Story bible entities will be scoped by this project id in a future branch.
-        </p>
-      </div>
+      {actions.sceneActionError ? <p className="text-sm text-destructive">{actions.sceneActionError}</p> : null}
+      <SceneList projectId={projectId} project={project} />
     </section>
   );
 }
 
-function ProjectDetailContent({ project }: { project: WritingProject }): ReactElement {
+function ProjectDetailView({
+  project,
+  projectId,
+  actions,
+}: {
+  project: WritingProject;
+  projectId: string;
+  actions: SceneActions;
+}): ReactElement {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-10">
       <header className="space-y-2">
@@ -148,8 +277,10 @@ function ProjectDetailContent({ project }: { project: WritingProject }): ReactEl
         </p>
         <p className="text-xs text-muted-foreground">Last updated: {formatProjectDate(project.updatedAt)}</p>
       </header>
+
       <ProjectStats project={project} />
-      <ProjectPlaceholders />
+      <ProjectScenesSection projectId={projectId} project={project} actions={actions} />
+
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
         Back to workspace
       </Link>
@@ -157,19 +288,20 @@ function ProjectDetailContent({ project }: { project: WritingProject }): ReactEl
   );
 }
 
-export default function WorkspaceProjectPage(): ReactElement {
-  const params = useParams<{ projectId: string }>();
-  const service = useMemo(() => createProjectService(new LocalProjectRepository()), []);
-  const projectIdParam = getProjectIdParam(params.projectId);
-  const parsedProjectId = projectIdSchema.safeParse(projectIdParam);
-  const projectId = parsedProjectId.success ? parsedProjectId.data : null;
-  const { state, errorMessage, project } = useProjectDetail(projectId, service);
-
+function ProjectPageState({
+  projectId,
+  detail,
+  actions,
+}: {
+  projectId: string | null;
+  detail: ProjectDetailResult;
+  actions: SceneActions;
+}): ReactElement {
   if (!projectId) {
     return <CenteredMessage description="The URL does not contain a valid project identifier." title="Invalid project id" />;
   }
 
-  if (state === 'loading') {
+  if (detail.state === 'loading') {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
         <p>Loading project...</p>
@@ -177,15 +309,15 @@ export default function WorkspaceProjectPage(): ReactElement {
     );
   }
 
-  if (state === 'not-found') {
+  if (detail.state === 'not-found') {
     return <CenteredMessage description="This project does not exist in local storage." title="Project not found" />;
   }
 
-  if (state === 'error') {
-    return <CenteredMessage description={errorMessage ?? 'Unable to open project.'} title="Unable to open project" tone="destructive" />;
+  if (detail.state === 'error') {
+    return <CenteredMessage description={detail.errorMessage ?? 'Unable to open project.'} title="Unable to open project" tone="destructive" />;
   }
 
-  if (!project) {
+  if (!detail.project) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
         <p>Unable to load project.</p>
@@ -193,5 +325,48 @@ export default function WorkspaceProjectPage(): ReactElement {
     );
   }
 
-  return <ProjectDetailContent project={project} />;
+  return <ProjectDetailView project={detail.project} projectId={projectId} actions={actions} />;
+}
+
+export default function WorkspaceProjectPage(): ReactElement {
+  const projectId = useProjectIdParam();
+  const repository = useMemo(() => new LocalProjectRepository(), []);
+  const projectService = useMemo(() => createProjectService(repository), [repository]);
+  const sceneService = useMemo(() => new SceneEditorService(repository), [repository]);
+
+  const [isCreatingScene, setIsCreatingScene] = useState<boolean>(false);
+  const [sceneActionError, setSceneActionError] = useState<string | null>(null);
+  const detail = useProjectDetail(projectId, projectService);
+
+  const createScene = useCallback(async (): Promise<void> => {
+    if (!projectId || !detail.project) {
+      return;
+    }
+
+    setSceneActionError(null);
+    setIsCreatingScene(true);
+    try {
+      await sceneService.createScene({
+        projectId,
+        title: getNextSceneTitle(detail.project),
+      });
+      await detail.reload();
+    } catch (error) {
+      setSceneActionError(toErrorMessage(error, 'Unable to create scene.'));
+    } finally {
+      setIsCreatingScene(false);
+    }
+  }, [detail, projectId, sceneService]);
+
+  return (
+    <ProjectPageState
+      projectId={projectId}
+      detail={detail}
+      actions={{
+        isCreatingScene,
+        sceneActionError,
+        createScene,
+      }}
+    />
+  );
 }

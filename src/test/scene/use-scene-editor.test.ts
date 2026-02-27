@@ -59,6 +59,16 @@ const createServiceDouble = (options: {
     listProjectScenes: vi
       .fn()
       .mockResolvedValue({ state: 'ready', scenes: [] } satisfies ProjectScenesResult),
+    createScene: vi.fn().mockImplementation(async (input) =>
+      createScene({
+        id: 'scene-created',
+        projectId: input.projectId,
+        title: input.title,
+        content: '',
+        status: 'draft',
+        updatedAt: '2026-02-25T10:00:00.000Z',
+      }),
+    ),
     saveScene:
       options.saveScene ??
       vi.fn().mockImplementation(async (input) =>

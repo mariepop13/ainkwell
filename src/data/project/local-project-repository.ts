@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type { ProjectRepository } from '@/domain/project/repository';
 import {
   createProjectInputSchema,
@@ -9,138 +11,42 @@ import {
 } from '@/domain/project/schemas';
 import type {
   CreateProjectInput,
-  ProjectSettings,
-  ProjectStats,
   UpdateProjectInput,
   WritingProject,
 } from '@/domain/project/types';
-import {
-  saveSceneInputSchema,
-  sceneSchema,
-  sceneSummarySchema,
-  workspaceStoreSchema,
-  type WorkspaceStoreV1,
-} from '@/domain/scene/schemas';
+import { saveSceneInputSchema, sceneSchema, sceneSummarySchema } from '@/domain/scene/schemas';
 import type { Scene, SceneSummary } from '@/domain/scene/types';
 import { generateProjectId } from '@/lib/utils';
 
-export const PROJECT_STORAGE_KEY = 'ainkwell.projects.v1';
-const PROJECT_STORAGE_VERSION = 1 as const;
+import {
+  browserOnlyRepositoryMessage,
+  createDefaultProjectScene,
+  createDefaultProjectSettings,
+  createDefaultProjectStats,
+  createEmptyProjectStorage,
+  createProjectScene,
+  defaultSceneContent,
+  getStorage,
+  mergeLegacyWorkspaceIntoProjectStorage,
+  parseLegacyWorkspace,
+  parseProjectStorageValue,
+  PROJECT_STORAGE_VERSION,
+  sortProjectsByUpdatedAt,
+  withRecalculatedStats,
+} from './local-project-repository-helpers';
 
+export const PROJECT_STORAGE_KEY = 'ainkwell.projects.v1';
 export const workspaceStorageKey = 'ainkwell:workspace:v1';
+
 export const projectNotFoundCode = 'PROJECT_NOT_FOUND';
 export const sceneNotFoundCode = 'SCENE_NOT_FOUND';
 
-const browserOnlyRepositoryMessage = 'Local project repository is available only in the browser.';
-const demoProjectId = 'demo-project';
-const demoProjectTitle = 'Demo Project';
-
-const defaultProjectStats: ProjectStats = {
-  wordCount: 0,
-  sceneCount: 0,
-  chapterCount: 0,
-};
-
-const defaultProjectSettings: ProjectSettings = {
-  language: 'en',
-  targetWordCount: null,
-};
-
-type SceneSeed = Pick<Scene, 'id' | 'title' | 'content' | 'status' | 'updatedAt'>;
-
-const demoSceneSeeds: SceneSeed[] = [
-  {
-    id: 'scene-1',
-    title: 'Scene 1',
-    content: '# Scene 1\n\nThis is the opening beat.',
-    status: 'draft',
-    updatedAt: '2026-02-25T00:00:00.000Z',
-  },
-  {
-    id: 'scene-2',
-    title: 'Scene 2',
-    content: '## Rising Tension\n\nThe stakes increase for the protagonist.',
-    status: 'revise',
-    updatedAt: '2026-02-25T00:05:00.000Z',
-  },
-  {
-    id: 'scene-3',
-    title: 'Scene 3',
-    content: 'Final confrontation notes and closing paragraph.',
-    status: 'final',
-    updatedAt: '2026-02-25T00:10:00.000Z',
-  },
-];
-
-const createDemoScenes = (): WorkspaceStoreV1['projects'][string]['scenes'] =>
-  Object.fromEntries(demoSceneSeeds.map((sceneSeed) => [sceneSeed.id, { ...sceneSeed, projectId: demoProjectId }]));
-
-const createSeedWorkspaceStore = (): WorkspaceStoreV1 => ({
-  version: 1,
-  projects: {
-    [demoProjectId]: {
-      id: demoProjectId,
-      title: demoProjectTitle,
-      sceneOrder: demoSceneSeeds.map((sceneSeed) => sceneSeed.id),
-      scenes: createDemoScenes(),
-    },
-  },
+const createSceneInputSchema = z.object({
+  projectId: projectIdSchema,
+  title: z.string().trim().min(1).max(120),
 });
 
-function sortProjectsByUpdatedAt(projects: WritingProject[]): WritingProject[] {
-  return [...projects].sort(
-    (leftProject, rightProject) =>
-      new Date(rightProject.updatedAt).getTime() - new Date(leftProject.updatedAt).getTime(),
-  );
-}
-
-function emptyStorageValue(): ProjectStorage {
-  return {
-    version: PROJECT_STORAGE_VERSION,
-    projects: [],
-  };
-}
-
-function getStorage(): Storage | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    return window.localStorage;
-  } catch (error) {
-    console.error('Local storage is not accessible in this environment.', error);
-    return null;
-  }
-}
-
-function parseStorageValue(rawValue: string | null): ProjectStorage {
-  if (!rawValue) {
-    return emptyStorageValue();
-  }
-
-  try {
-    const parsedValue: unknown = JSON.parse(rawValue);
-    const validatedStorage = projectStorageSchema.safeParse(parsedValue);
-
-    if (!validatedStorage.success) {
-      console.error('Invalid project storage shape, fallback to empty workspace.');
-      return emptyStorageValue();
-    }
-
-    return {
-      version: validatedStorage.data.version,
-      projects: sortProjectsByUpdatedAt(validatedStorage.data.projects),
-    };
-  } catch (error) {
-    console.error('Failed to parse project storage, fallback to empty workspace.', error);
-    return emptyStorageValue();
-  }
-}
-
-function asProjectNotFound(projectId: string): Error {
-  return new Error(`Project not found: ${projectId}`);
-}
+const asProjectNotFound = (projectId: string): Error => new Error(`Project not found: ${projectId}`);
 
 export class LocalProjectRepository implements ProjectRepository {
   public async list(): Promise<WritingProject[]> {
@@ -155,76 +61,122 @@ export class LocalProjectRepository implements ProjectRepository {
 
   public async create(input: CreateProjectInput): Promise<WritingProject> {
     const validInput = createProjectInputSchema.parse(input);
-    const projects = this.readProjects();
+    const projectStorage = this.readProjectStorage();
     const timestamp = new Date().toISOString();
+    const projectId = generateProjectId();
+    const seedScene = createDefaultProjectScene(projectId, timestamp);
 
-    const project = writingProjectSchema.parse({
-      id: generateProjectId(),
-      title: validInput.title,
-      description: validInput.description,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      stats: defaultProjectStats,
-      settings: {
-        ...defaultProjectSettings,
-        ...(validInput.settings ?? {}),
-      },
+    const createdProject = withRecalculatedStats(
+      writingProjectSchema.parse({
+        id: projectId,
+        title: validInput.title,
+        description: validInput.description,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        stats: createDefaultProjectStats(),
+        settings: {
+          ...createDefaultProjectSettings(),
+          ...(validInput.settings ?? {}),
+        },
+        sceneOrder: [seedScene.id],
+        scenes: {
+          [seedScene.id]: seedScene,
+        },
+      }),
+    );
+
+    this.writeProjectStorage({
+      version: PROJECT_STORAGE_VERSION,
+      projects: sortProjectsByUpdatedAt([createdProject, ...projectStorage.projects]),
     });
 
-    const nextProjects = sortProjectsByUpdatedAt([project, ...projects]);
-    this.writeProjects(nextProjects);
-
-    return project;
+    return createdProject;
   }
 
   public async update(id: string, input: UpdateProjectInput): Promise<WritingProject> {
     const validProjectId = projectIdSchema.parse(id);
     const validInput = updateProjectInputSchema.parse(input);
-    const projects = this.readProjects();
-    const targetProject = projects.find((project) => project.id === validProjectId);
+    const projectStorage = this.readProjectStorage();
+    const targetProject = projectStorage.projects.find((project) => project.id === validProjectId);
 
     if (!targetProject) {
       throw asProjectNotFound(validProjectId);
     }
 
-    const updatedProject = writingProjectSchema.parse({
-      ...targetProject,
-      ...validInput,
-      settings: {
-        ...targetProject.settings,
-        ...(validInput.settings ?? {}),
-      },
-      stats: {
-        ...targetProject.stats,
-        ...(validInput.stats ?? {}),
-      },
-      updatedAt: new Date().toISOString(),
-    });
-
-    const nextProjects = projects.map((project) =>
-      project.id === validProjectId ? updatedProject : project,
+    const updatedProject = withRecalculatedStats(
+      writingProjectSchema.parse({
+        ...targetProject,
+        ...validInput,
+        settings: {
+          ...targetProject.settings,
+          ...(validInput.settings ?? {}),
+        },
+        stats: {
+          ...targetProject.stats,
+          ...(validInput.stats ?? {}),
+        },
+        updatedAt: new Date().toISOString(),
+      }),
     );
 
-    this.writeProjects(nextProjects);
+    this.writeProjects(
+      projectStorage.projects.map((project) =>
+        project.id === validProjectId ? updatedProject : project,
+      ),
+    );
 
     return updatedProject;
   }
 
   public async remove(id: string): Promise<void> {
     const validProjectId = projectIdSchema.parse(id);
-    const projects = this.readProjects();
-    const nextProjects = projects.filter((project) => project.id !== validProjectId);
+    const projectStorage = this.readProjectStorage();
+    const nextProjects = projectStorage.projects.filter((project) => project.id !== validProjectId);
 
-    if (nextProjects.length === projects.length) {
+    if (nextProjects.length === projectStorage.projects.length) {
       return;
     }
 
     this.writeProjects(nextProjects);
   }
 
+  public async createScene(input: { projectId: string; title: string }): Promise<Scene> {
+    const validInput = createSceneInputSchema.parse(input);
+    const projectStorage = this.readProjectStorage();
+    const project = this.getSceneProjectOrThrow(projectStorage.projects, validInput.projectId);
+
+    const scene = createProjectScene({
+      projectId: validInput.projectId,
+      title: validInput.title,
+      content: defaultSceneContent,
+      status: 'draft',
+      updatedAt: new Date().toISOString(),
+    });
+
+    const updatedProject = withRecalculatedStats(
+      writingProjectSchema.parse({
+        ...project,
+        updatedAt: scene.updatedAt,
+        sceneOrder: [...project.sceneOrder, scene.id],
+        scenes: {
+          ...project.scenes,
+          [scene.id]: scene,
+        },
+      }),
+    );
+
+    this.writeProjects(
+      projectStorage.projects.map((currentProject) =>
+        currentProject.id === validInput.projectId ? updatedProject : currentProject,
+      ),
+    );
+
+    return scene;
+  }
+
   public async getScene(input: { projectId: string; sceneId: string }): Promise<Scene | null> {
-    const workspaceStore = this.readWorkspaceStore();
-    const project = this.getSceneProjectOrThrow(workspaceStore, input.projectId);
+    const projectStorage = this.readProjectStorage();
+    const project = this.getSceneProjectOrThrow(projectStorage.projects, input.projectId);
     const scene = project.scenes[input.sceneId];
 
     if (!scene || scene.projectId !== input.projectId) {
@@ -235,8 +187,8 @@ export class LocalProjectRepository implements ProjectRepository {
   }
 
   public async listScenes(input: { projectId: string }): Promise<SceneSummary[]> {
-    const workspaceStore = this.readWorkspaceStore();
-    const project = this.getSceneProjectOrThrow(workspaceStore, input.projectId);
+    const projectStorage = this.readProjectStorage();
+    const project = this.getSceneProjectOrThrow(projectStorage.projects, input.projectId);
 
     return project.sceneOrder.map((sceneId) => {
       const scene = project.scenes[sceneId];
@@ -256,8 +208,8 @@ export class LocalProjectRepository implements ProjectRepository {
     updatedAt: string;
   }): Promise<Scene> {
     const parsedInput = saveSceneInputSchema.parse(input);
-    const workspaceStore = this.readWorkspaceStore();
-    const project = this.getSceneProjectOrThrow(workspaceStore, parsedInput.projectId);
+    const projectStorage = this.readProjectStorage();
+    const project = this.getSceneProjectOrThrow(projectStorage.projects, parsedInput.projectId);
     const existingScene = project.scenes[parsedInput.sceneId];
 
     if (!existingScene || existingScene.projectId !== parsedInput.projectId) {
@@ -271,93 +223,85 @@ export class LocalProjectRepository implements ProjectRepository {
       updatedAt: parsedInput.updatedAt,
     });
 
-    const nextStore: WorkspaceStoreV1 = {
-      ...workspaceStore,
-      projects: {
-        ...workspaceStore.projects,
-        [parsedInput.projectId]: {
-          ...project,
-          scenes: {
-            ...project.scenes,
-            [parsedInput.sceneId]: updatedScene,
-          },
+    const updatedProject = withRecalculatedStats(
+      writingProjectSchema.parse({
+        ...project,
+        updatedAt: parsedInput.updatedAt,
+        scenes: {
+          ...project.scenes,
+          [parsedInput.sceneId]: updatedScene,
         },
-      },
-    };
+      }),
+    );
 
-    this.writeWorkspaceStore(nextStore);
+    this.writeProjects(
+      projectStorage.projects.map((currentProject) =>
+        currentProject.id === parsedInput.projectId ? updatedProject : currentProject,
+      ),
+    );
+
     return updatedScene;
   }
 
   private readProjects(): WritingProject[] {
+    return this.readProjectStorage().projects;
+  }
+
+  private readProjectStorage(): ProjectStorage {
     const storage = getStorage();
 
     if (!storage) {
-      return [];
+      return createEmptyProjectStorage();
     }
 
-    const rawValue = storage.getItem(PROJECT_STORAGE_KEY);
-    const storageValue = parseStorageValue(rawValue);
+    const parsedStorage = parseProjectStorageValue(storage.getItem(PROJECT_STORAGE_KEY));
+    const legacyWorkspace = parseLegacyWorkspace(storage.getItem(workspaceStorageKey));
 
-    return sortProjectsByUpdatedAt(storageValue.projects);
+    const mergedStorage = mergeLegacyWorkspaceIntoProjectStorage({
+      projectStorage: parsedStorage.storage,
+      legacyWorkspace,
+      importedAt: new Date().toISOString(),
+    });
+
+    if (parsedStorage.needsWrite || mergedStorage.didMerge) {
+      this.writeProjectStorageToStorage(storage, mergedStorage.storage);
+    }
+
+    if (mergedStorage.didMerge) {
+      storage.removeItem(workspaceStorageKey);
+    }
+
+    return mergedStorage.storage;
   }
 
   private writeProjects(projects: WritingProject[]): void {
-    const storage = getStorage();
-
-    if (!storage) {
-      throw new Error('Storage is not available in this environment.');
-    }
-
-    const payload = projectStorageSchema.parse({
+    this.writeProjectStorage({
       version: PROJECT_STORAGE_VERSION,
       projects: sortProjectsByUpdatedAt(projects),
     });
-
-    storage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(payload));
   }
 
-  private readWorkspaceStore(): WorkspaceStoreV1 {
-    this.assertBrowserContext();
-    const storedWorkspace = window.localStorage.getItem(workspaceStorageKey);
+  private writeProjectStorage(projectStorage: ProjectStorage): void {
+    const storage = getStorage();
 
-    if (!storedWorkspace) {
-      const seedWorkspace = createSeedWorkspaceStore();
-      this.writeWorkspaceStore(seedWorkspace);
-      return seedWorkspace;
+    if (!storage) {
+      throw new Error(browserOnlyRepositoryMessage);
     }
 
-    try {
-      const parsedWorkspace = JSON.parse(storedWorkspace) as unknown;
-      return workspaceStoreSchema.parse(parsedWorkspace);
-    } catch {
-      const seedWorkspace = createSeedWorkspaceStore();
-      this.writeWorkspaceStore(seedWorkspace);
-      return seedWorkspace;
-    }
+    this.writeProjectStorageToStorage(storage, projectStorage);
   }
 
-  private writeWorkspaceStore(workspaceStore: WorkspaceStoreV1): void {
-    this.assertBrowserContext();
-    const parsedWorkspace = workspaceStoreSchema.parse(workspaceStore);
-    window.localStorage.setItem(workspaceStorageKey, JSON.stringify(parsedWorkspace));
+  private writeProjectStorageToStorage(storage: Storage, projectStorage: ProjectStorage): void {
+    const parsedStorage = projectStorageSchema.parse(projectStorage);
+    storage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(parsedStorage));
   }
 
-  private getSceneProjectOrThrow(
-    workspaceStore: WorkspaceStoreV1,
-    projectId: string,
-  ): WorkspaceStoreV1['projects'][string] {
-    const project = workspaceStore.projects[projectId];
+  private getSceneProjectOrThrow(projects: WritingProject[], projectId: string): WritingProject {
+    const project = projects.find((currentProject) => currentProject.id === projectId);
     if (!project) {
       throw new Error(projectNotFoundCode);
     }
 
     return project;
-  }
-
-  private assertBrowserContext(): void {
-    if (typeof window === 'undefined') {
-      throw new Error(browserOnlyRepositoryMessage);
-    }
   }
 }

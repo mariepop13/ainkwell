@@ -18,6 +18,11 @@ type SaveSceneInput = {
   updatedAt: string;
 };
 
+type CreateSceneInput = {
+  projectId: string;
+  title: string;
+};
+
 type ListProjectScenesInput = {
   projectId: string;
 };
@@ -55,6 +60,7 @@ export type ProjectScenesResult =
 export interface SceneEditorServicePort {
   loadScene(input: LoadSceneInput): Promise<SceneLoadResult>;
   listProjectScenes(input: ListProjectScenesInput): Promise<ProjectScenesResult>;
+  createScene(input: CreateSceneInput): Promise<Scene>;
   saveScene(input: SaveSceneInput): Promise<Scene>;
   countWords(content: string): number;
   toUserErrorMessage(error: unknown): string;
@@ -110,6 +116,10 @@ export class SceneEditorService implements SceneEditorServicePort {
     }
 
     return { state: 'ready', scenes };
+  }
+
+  public async createScene(input: CreateSceneInput): Promise<Scene> {
+    return this.projectRepository.createScene(input);
   }
 
   public async saveScene(input: SaveSceneInput): Promise<Scene> {

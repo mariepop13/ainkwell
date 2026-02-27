@@ -25,12 +25,6 @@ export default function HomePage(): ReactElement {
           >
             Open Project Workspace
           </Link>
-          <Link
-            href="/workspace/demo-project/scene/scene-1"
-            className="inline-flex rounded-md border px-4 py-2 text-sm font-semibold"
-          >
-            Open Demo Scene
-          </Link>
         </div>
       </div>
     </main>

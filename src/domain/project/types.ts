@@ -1,3 +1,5 @@
+import type { SceneStatus } from '@/domain/scene/types';
+
 export type ProjectStats = {
   wordCount: number;
   sceneCount: number;
@@ -9,6 +11,15 @@ export type ProjectSettings = {
   targetWordCount: number | null;
 };
 
+export type ProjectScene = {
+  id: string;
+  projectId: string;
+  title: string;
+  content: string;
+  status: SceneStatus;
+  updatedAt: string;
+};
+
 export type WritingProject = {
   id: string;
   title: string;
@@ -17,6 +28,8 @@ export type WritingProject = {
   updatedAt: string;
   stats: ProjectStats;
   settings: ProjectSettings;
+  sceneOrder: string[];
+  scenes: Record<string, ProjectScene>;
 };
 
 export type CreateProjectInput = {

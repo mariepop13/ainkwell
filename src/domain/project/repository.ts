@@ -7,6 +7,7 @@ export interface ProjectRepository {
   create(input: CreateProjectInput): Promise<WritingProject>;
   update(id: string, input: UpdateProjectInput): Promise<WritingProject>;
   remove(id: string): Promise<void>;
+  createScene(input: { projectId: string; title: string }): Promise<Scene>;
   getScene(input: { projectId: string; sceneId: string }): Promise<Scene | null>;
   listScenes(input: { projectId: string }): Promise<SceneSummary[]>;
   saveScene(input: {

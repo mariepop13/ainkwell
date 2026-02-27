@@ -1,9 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import type { SceneEditorServicePort } from '@/application/scene/scene-editor-service';
 import type { Scene, SceneStatus } from '@/domain/scene/types';
 
-type SceneEditorLoadState = 'loading' | 'ready' | 'project-not-found' | 'scene-not-found';
+import {
+  applyLoadedScene,
+  applySaveFailure,
+  applySaveSuccess,
+  applyUnavailableScene,
+  assignRef,
+  clearAutosaveTimeout,
+  createSavePayload,
+  decrementRef,
+  incrementRef,
+  initialViewState,
+  markDirty,
+  type SceneEditorLoadState,
+  type SceneRuntimeRefs,
+  type SceneViewState,
+  type ViewStateReplacer,
+  type ViewStateSetter,
+} from './use-scene-editor-runtime';
 
 type UseSceneEditorInput = {
   projectId: string;
@@ -30,18 +53,25 @@ export type UseSceneEditorResult = {
 
 const autosaveDelayInMilliseconds = 800;
 
-export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult {
-  const [scene, setScene] = useState<Scene | null>(null);
-  const [content, setContentState] = useState<string>('');
-  const [status, setStatusState] = useState<SceneStatus>('draft');
-  const [isDirty, setIsDirtyState] = useState<boolean>(false);
-  const [isSaving, setIsSavingState] = useState<boolean>(false);
-  const [saveError, setSaveErrorState] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAtState] = useState<string | null>(null);
-  const [previousSceneId, setPreviousSceneIdState] = useState<string | null>(null);
-  const [nextSceneId, setNextSceneIdState] = useState<string | null>(null);
-  const [loadState, setLoadState] = useState<SceneEditorLoadState>('loading');
+function useViewState(): {
+  viewState: SceneViewState;
+  patchViewState: ViewStateSetter;
+  replaceViewState: ViewStateReplacer;
+} {
+  const [viewState, setViewState] = useState<SceneViewState>(initialViewState);
 
+  const patchViewState = useCallback((patch: Partial<SceneViewState>): void => {
+    setViewState((previousState) => ({ ...previousState, ...patch }));
+  }, []);
+
+  const replaceViewState = useCallback((nextState: SceneViewState): void => {
+    setViewState(nextState);
+  }, []);
+
+  return { viewState, patchViewState, replaceViewState };
+}
+
+function useRuntimeRefs(): SceneRuntimeRefs {
   const sceneRef = useRef<Scene | null>(null);
   const contentRef = useRef<string>('');
   const statusRef = useRef<SceneStatus>('draft');
@@ -52,230 +82,204 @@ export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult
   const isMountedRef = useRef<boolean>(false);
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resetMutableState = useCallback((): void => {
-    sceneRef.current = null;
-    contentRef.current = '';
-    statusRef.current = 'draft';
-    isDirtyRef.current = false;
-    latestRequestRef.current = 0;
-    latestAppliedRequestRef.current = 0;
-    inFlightRequestCountRef.current = 0;
-  }, []);
-
-  const applyUnavailableSceneState = useCallback(
-    (nextLoadState: Extract<SceneEditorLoadState, 'project-not-found' | 'scene-not-found'>): void => {
-      resetMutableState();
-      setScene(null);
-      setContentState('');
-      setStatusState('draft');
-      setIsDirtyState(false);
-      setIsSavingState(false);
-      setLastSavedAtState(null);
-      setPreviousSceneIdState(null);
-      setNextSceneIdState(null);
-      setLoadState(nextLoadState);
-    },
-    [resetMutableState],
-  );
-
-  const markDirty = useCallback((): void => {
-    isDirtyRef.current = true;
-    setIsDirtyState(true);
-  }, []);
-
-  const clearAutosaveTimeout = useCallback((): void => {
-    if (!autosaveTimeoutRef.current) {
-      return;
-    }
-
-    clearTimeout(autosaveTimeoutRef.current);
-    autosaveTimeoutRef.current = null;
-  }, []);
-
-  const applySaveSuccess = useCallback(
-    (requestId: number, savedScene: Scene, payloadContent: string, payloadStatus: SceneStatus): void => {
-      if (!isMountedRef.current) {
-        return;
-      }
-
-      if (requestId < latestAppliedRequestRef.current) {
-        return;
-      }
-
-      latestAppliedRequestRef.current = requestId;
-      setSaveErrorState(null);
-
-      if (requestId === latestRequestRef.current) {
-        setScene(savedScene);
-        sceneRef.current = savedScene;
-        setLastSavedAtState(savedScene.updatedAt);
-
-        const isCurrentPayload =
-          contentRef.current === payloadContent && statusRef.current === payloadStatus;
-
-        if (isCurrentPayload) {
-          isDirtyRef.current = false;
-          setIsDirtyState(false);
-        }
-      }
-    },
+  return useMemo(
+    () => ({
+      sceneRef,
+      contentRef,
+      statusRef,
+      isDirtyRef,
+      latestRequestRef,
+      latestAppliedRequestRef,
+      inFlightRequestCountRef,
+      isMountedRef,
+      autosaveTimeoutRef,
+    }),
     [],
   );
+}
 
-  const applySaveFailure = useCallback(
-    (requestId: number, error: unknown): void => {
-      if (!isMountedRef.current) {
-        return;
-      }
-
-      if (requestId !== latestRequestRef.current) {
-        return;
-      }
-
-      markDirty();
-      setSaveErrorState(input.service.toUserErrorMessage(error));
-    },
-    [input.service, markDirty],
-  );
-
-  const runSaveCycle = useCallback(async (): Promise<void> => {
-    if (!sceneRef.current || !isDirtyRef.current) {
+function useRunSaveCycle(
+  input: UseSceneEditorInput,
+  runtimeRefs: SceneRuntimeRefs,
+  patchViewState: ViewStateSetter,
+): () => Promise<void> {
+  return useCallback(async (): Promise<void> => {
+    if (!runtimeRefs.sceneRef.current || !runtimeRefs.isDirtyRef.current) {
       return;
     }
 
-    const payload = {
-      projectId: sceneRef.current.projectId,
-      sceneId: sceneRef.current.id,
-      content: contentRef.current,
-      status: statusRef.current,
-      updatedAt: new Date().toISOString(),
-    };
+    const payload = createSavePayload(runtimeRefs);
+    if (!payload) {
+      return;
+    }
 
-    const requestId = latestRequestRef.current + 1;
-    latestRequestRef.current = requestId;
-
-    inFlightRequestCountRef.current += 1;
-    setIsSavingState(true);
+    const requestId = incrementRef(runtimeRefs.latestRequestRef);
+    incrementRef(runtimeRefs.inFlightRequestCountRef);
+    patchViewState({ isSaving: true });
 
     try {
       const savedScene = await input.service.saveScene(payload);
-      applySaveSuccess(requestId, savedScene, payload.content, payload.status);
+      applySaveSuccess({ runtimeRefs, patchViewState, requestId, payload, savedScene });
     } catch (error) {
-      applySaveFailure(requestId, error);
+      applySaveFailure({
+        runtimeRefs,
+        patchViewState,
+        service: input.service,
+        requestId,
+        error,
+      });
     } finally {
-      inFlightRequestCountRef.current = Math.max(inFlightRequestCountRef.current - 1, 0);
-      if (isMountedRef.current && inFlightRequestCountRef.current === 0) {
-        setIsSavingState(false);
+      const inFlightCount = decrementRef(runtimeRefs.inFlightRequestCountRef);
+      if (runtimeRefs.isMountedRef.current && inFlightCount === 0) {
+        patchViewState({ isSaving: false });
       }
     }
-  }, [applySaveFailure, applySaveSuccess, input.service]);
+  }, [input.service, patchViewState, runtimeRefs]);
+}
 
-  const setContent = useCallback(
-    (value: string): void => {
-      contentRef.current = value;
-      setContentState(value);
-      setSaveErrorState(null);
-      markDirty();
-    },
-    [markDirty],
-  );
-
-  const setStatus = useCallback(
-    (value: SceneStatus): void => {
-      statusRef.current = value;
-      setStatusState(value);
-      setSaveErrorState(null);
-      markDirty();
-    },
-    [markDirty],
-  );
-
-  const retrySave = useCallback(async (): Promise<void> => {
-    setSaveErrorState(null);
-    await runSaveCycle();
-  }, [runSaveCycle]);
-
+function useMountLifecycle(runtimeRefs: SceneRuntimeRefs): void {
   useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      clearAutosaveTimeout();
-    };
-  }, [clearAutosaveTimeout]);
+    assignRef(runtimeRefs.isMountedRef, true);
 
+    return () => {
+      assignRef(runtimeRefs.isMountedRef, false);
+      clearAutosaveTimeout(runtimeRefs.autosaveTimeoutRef);
+    };
+  }, [runtimeRefs]);
+}
+
+function useLoadScene(
+  input: UseSceneEditorInput,
+  runtimeRefs: SceneRuntimeRefs,
+  patchViewState: ViewStateSetter,
+  replaceViewState: ViewStateReplacer,
+): void {
   useEffect(() => {
     const loadScene = async (): Promise<void> => {
-      setLoadState('loading');
-      setSaveErrorState(null);
+      patchViewState({ loadState: 'loading', saveError: null });
 
       const result = await input.service.loadScene({
         projectId: input.projectId,
         sceneId: input.sceneId,
       });
 
-      if (!isMountedRef.current) {
+      if (!runtimeRefs.isMountedRef.current) {
         return;
       }
 
       if (result.state === 'project-not-found') {
-        applyUnavailableSceneState('project-not-found');
+        applyUnavailableScene(runtimeRefs, replaceViewState, 'project-not-found');
         return;
       }
 
       if (result.state === 'scene-not-found') {
-        applyUnavailableSceneState('scene-not-found');
+        applyUnavailableScene(runtimeRefs, replaceViewState, 'scene-not-found');
         return;
       }
 
-      sceneRef.current = result.scene;
-      contentRef.current = result.scene.content;
-      statusRef.current = result.scene.status;
-      isDirtyRef.current = false;
-      latestRequestRef.current = 0;
-      latestAppliedRequestRef.current = 0;
-      inFlightRequestCountRef.current = 0;
-
-      setScene(result.scene);
-      setContentState(result.scene.content);
-      setStatusState(result.scene.status);
-      setIsDirtyState(false);
-      setIsSavingState(false);
-      setLastSavedAtState(result.scene.updatedAt);
-      setPreviousSceneIdState(result.previousSceneId);
-      setNextSceneIdState(result.nextSceneId);
-      setLoadState('ready');
+      applyLoadedScene({
+        runtimeRefs,
+        replaceViewState,
+        scene: result.scene,
+        previousSceneId: result.previousSceneId,
+        nextSceneId: result.nextSceneId,
+      });
     };
 
     void loadScene();
-  }, [applyUnavailableSceneState, input.projectId, input.sceneId, input.service]);
+  }, [input.projectId, input.sceneId, input.service, patchViewState, replaceViewState, runtimeRefs]);
+}
 
+function useAutosave(
+  runtimeRefs: SceneRuntimeRefs,
+  viewState: SceneViewState,
+  runSaveCycle: () => Promise<void>,
+): void {
   useEffect(() => {
-    if (loadState !== 'ready' || !isDirty) {
+    if (viewState.loadState !== 'ready' || !viewState.isDirty) {
       return undefined;
     }
 
-    clearAutosaveTimeout();
-    autosaveTimeoutRef.current = setTimeout(() => {
+    clearAutosaveTimeout(runtimeRefs.autosaveTimeoutRef);
+    const timeout = setTimeout(() => {
       void runSaveCycle();
     }, autosaveDelayInMilliseconds);
 
-    return clearAutosaveTimeout;
-  }, [clearAutosaveTimeout, content, isDirty, loadState, runSaveCycle, status]);
+    assignRef(runtimeRefs.autosaveTimeoutRef, timeout);
+    return () => clearAutosaveTimeout(runtimeRefs.autosaveTimeoutRef);
+  }, [
+    runSaveCycle,
+    runtimeRefs,
+    viewState.content,
+    viewState.isDirty,
+    viewState.loadState,
+    viewState.status,
+  ]);
+}
 
-  const wordCount = useMemo<number>(() => input.service.countWords(content), [content, input.service]);
+function useEditorMutators(
+  runtimeRefs: SceneRuntimeRefs,
+  patchViewState: ViewStateSetter,
+  runSaveCycle: () => Promise<void>,
+): Pick<UseSceneEditorResult, 'setContent' | 'setStatus' | 'retrySave'> {
+  const setContent = useCallback(
+    (value: string): void => {
+      assignRef(runtimeRefs.contentRef, value);
+      patchViewState({ content: value, saveError: null });
+      markDirty(runtimeRefs, patchViewState);
+    },
+    [patchViewState, runtimeRefs],
+  );
+
+  const setStatus = useCallback(
+    (value: SceneStatus): void => {
+      assignRef(runtimeRefs.statusRef, value);
+      patchViewState({ status: value, saveError: null });
+      markDirty(runtimeRefs, patchViewState);
+    },
+    [patchViewState, runtimeRefs],
+  );
+
+  const retrySave = useCallback(async (): Promise<void> => {
+    patchViewState({ saveError: null });
+    await runSaveCycle();
+  }, [patchViewState, runSaveCycle]);
+
+  return { setContent, setStatus, retrySave };
+}
+
+export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult {
+  const runtimeRefs = useRuntimeRefs();
+  const { viewState, patchViewState, replaceViewState } = useViewState();
+  const runSaveCycle = useRunSaveCycle(input, runtimeRefs, patchViewState);
+
+  useMountLifecycle(runtimeRefs);
+  useLoadScene(input, runtimeRefs, patchViewState, replaceViewState);
+  useAutosave(runtimeRefs, viewState, runSaveCycle);
+
+  const { setContent, setStatus, retrySave } = useEditorMutators(
+    runtimeRefs,
+    patchViewState,
+    runSaveCycle,
+  );
+
+  const wordCount = useMemo<number>(
+    () => input.service.countWords(viewState.content),
+    [input.service, viewState.content],
+  );
 
   return {
-    scene,
-    content,
-    status,
+    scene: viewState.scene,
+    content: viewState.content,
+    status: viewState.status,
     wordCount,
-    isDirty,
-    isSaving,
-    saveError,
-    lastSavedAt,
-    previousSceneId,
-    nextSceneId,
-    loadState,
+    isDirty: viewState.isDirty,
+    isSaving: viewState.isSaving,
+    saveError: viewState.saveError,
+    lastSavedAt: viewState.lastSavedAt,
+    previousSceneId: viewState.previousSceneId,
+    nextSceneId: viewState.nextSceneId,
+    loadState: viewState.loadState,
     setContent,
     setStatus,
     retrySave,
