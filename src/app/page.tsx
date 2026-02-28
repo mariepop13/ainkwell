@@ -18,6 +18,14 @@ export default function HomePage(): ReactElement {
             </Link>
           </p>
         </div>
+        <div className="mt-6 flex items-center gap-3">
+          <Link
+            href="/workspace"
+            className="inline-flex rounded-md border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+          >
+            Open Project Workspace
+          </Link>
+        </div>
       </div>
     </main>
   );

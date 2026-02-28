@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    --font-inter: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', arial, sans-serif;
+    --font-space-grotesk: 'Trebuchet MS', 'Avenir Next', 'Segoe UI', sans-serif;
+    --font-merriweather: georgia, 'Times New Roman', serif;
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
