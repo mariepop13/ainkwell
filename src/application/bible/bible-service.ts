@@ -1,5 +1,6 @@
 import type { BibleRepository } from '@/domain/bible/repository';
 import { bibleEntitySchema, bibleRelationshipSchema, bibleSceneLinkSchema, projectSceneSchema } from '@/domain/bible/schemas';
+import { projectIdSchema } from '@/domain/project/schemas';
 import type {
   BibleEntity,
   BibleEntityFilters,
@@ -136,11 +137,12 @@ export class BibleService {
   }
 
   private normalizeProjectId(projectId: string): string {
-    const normalizedProjectId = projectId.trim();
-    if (!normalizedProjectId) {
+    const parsedProjectId = projectIdSchema.safeParse(projectId);
+    if (!parsedProjectId.success) {
       throw new BibleValidationError('A valid projectId is required');
     }
-    return normalizedProjectId;
+
+    return parsedProjectId.data;
   }
 
   private sanitizeTags(tags: string[]): string[] {

@@ -11,12 +11,6 @@ import type {
   ProjectScene,
 } from '@/domain/bible/types';
 
-const EMPTY_BIBLE_STORAGE: BibleStorageDocument = {
-  entities: [],
-  relationships: [],
-  sceneLinks: [],
-};
-
 function cloneEmptyBibleStorage(): BibleStorageDocument {
   return {
     entities: [],
@@ -315,4 +309,6 @@ export class LocalBibleRepository implements BibleRepository {
   }
 }
 
-export const emptyBibleStorage = EMPTY_BIBLE_STORAGE;
+export function createEmptyBibleStorage(): BibleStorageDocument {
+  return cloneEmptyBibleStorage();
+}

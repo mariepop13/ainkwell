@@ -66,6 +66,11 @@ interface EntityActions {
   deleteEntity: (entityId: string) => Promise<void>;
 }
 
+interface ProjectAccessSnapshot {
+  projectId: string | null;
+  access: ProjectAccess;
+}
+
 const EMPTY_BIBLE_DATA: BibleDataSnapshot = {
   entities: [],
   relationships: [],
@@ -143,17 +148,24 @@ async function fetchProjectAccess(projectId: string): Promise<ProjectAccess> {
 
 function useProjectAccess(projectId: string): ProjectAccess {
   const parsedProjectId = useMemo(() => projectIdSchema.safeParse(projectId), [projectId]);
-  const [projectAccess, setProjectAccess] = useState<ProjectAccess>(LOADING_PROJECT_ACCESS);
+  const [snapshot, setSnapshot] = useState<ProjectAccessSnapshot>({
+    projectId: null,
+    access: LOADING_PROJECT_ACCESS,
+  });
 
   useEffect(() => {
     if (!parsedProjectId.success) {
       return undefined;
     }
 
+    const nextProjectId = parsedProjectId.data;
     let isActive = true;
-    void fetchProjectAccess(parsedProjectId.data).then((nextProjectAccess) => {
+    void fetchProjectAccess(nextProjectId).then((nextProjectAccess) => {
       if (isActive) {
-        setProjectAccess(nextProjectAccess);
+        setSnapshot({
+          projectId: nextProjectId,
+          access: nextProjectAccess,
+        });
       }
     });
 
@@ -166,7 +178,11 @@ function useProjectAccess(projectId: string): ProjectAccess {
     return INVALID_PROJECT_ACCESS;
   }
 
-  return projectAccess;
+  if (snapshot.projectId !== parsedProjectId.data) {
+    return LOADING_PROJECT_ACCESS;
+  }
+
+  return snapshot.access;
 }
 
 function useBibleService(projectAccess: ProjectAccess): BibleService | null {
@@ -261,7 +277,7 @@ function useRunBibleOperation(
 ): (operation: (service: BibleService, validProjectId: string) => void) => void {
   return (operation: (service: BibleService, validProjectId: string) => void): void => {
     if (!bibleService || !projectId) {
-      return;
+      throw new BibleValidationError('Story Bible is not ready for this project');
     }
 
     operation(bibleService, projectId);
@@ -325,14 +341,19 @@ function useRelationshipActions(
       });
     } catch (nextError) {
       setError(toBibleErrorMessage(nextError));
+      throw nextError;
     }
   };
 
   const deleteRelationship = async (relationshipId: string): Promise<void> => {
-    runOperation((service, validProjectId) => {
-      setError(null);
-      service.deleteRelationship(validProjectId, relationshipId);
-    });
+    try {
+      runOperation((service, validProjectId) => {
+        setError(null);
+        service.deleteRelationship(validProjectId, relationshipId);
+      });
+    } catch (nextError) {
+      setError(toBibleErrorMessage(nextError));
+    }
   };
 
   return { error, saveRelationship, deleteRelationship };
@@ -355,14 +376,19 @@ function useSceneLinkActions(
       });
     } catch (nextError) {
       setError(toBibleErrorMessage(nextError));
+      throw nextError;
     }
   };
 
   const deleteSceneLink = async (sceneLinkId: string): Promise<void> => {
-    runOperation((service, validProjectId) => {
-      setError(null);
-      service.deleteSceneLink(validProjectId, sceneLinkId);
-    });
+    try {
+      runOperation((service, validProjectId) => {
+        setError(null);
+        service.deleteSceneLink(validProjectId, sceneLinkId);
+      });
+    } catch (nextError) {
+      setError(toBibleErrorMessage(nextError));
+    }
   };
 
   return { error, saveSceneLink, deleteSceneLink };

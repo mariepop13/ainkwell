@@ -41,7 +41,7 @@ export interface RelationshipEditorState {
   setToEntityId: (value: string) => void;
   setRelationshipType: (value: RelationshipType) => void;
   setNotes: (value: string) => void;
-  handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }
 
 function useRelationshipFormState(): RelationshipFormStateActions {
@@ -114,17 +114,25 @@ function createSubmitHandler({
   resolvedToEntityId: string;
   onSave: (input: SaveBibleRelationshipInput) => void | Promise<void>;
   resetNotes: () => void;
-}): (event: FormEvent<HTMLFormElement>) => void {
-  return (event: FormEvent<HTMLFormElement>): void => {
+}): (event: FormEvent<HTMLFormElement>) => Promise<void> {
+  return async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    void onSave({
-      projectId,
-      type: state.relationshipType,
-      fromEntityId: resolvedFromEntityId,
-      toEntityId: resolvedToEntityId,
-      notes: state.notes,
-    });
-    resetNotes();
+    if (!resolvedFromEntityId || !resolvedToEntityId || resolvedFromEntityId === resolvedToEntityId) {
+      return;
+    }
+
+    try {
+      await onSave({
+        projectId,
+        type: state.relationshipType,
+        fromEntityId: resolvedFromEntityId,
+        toEntityId: resolvedToEntityId,
+        notes: state.notes,
+      });
+      resetNotes();
+    } catch {
+      // Keep notes so users can retry after a failed save.
+    }
   };
 }
 

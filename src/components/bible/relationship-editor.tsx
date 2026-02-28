@@ -30,7 +30,7 @@ interface RelationshipFormProps {
   onToEntityChange: (value: string) => void;
   onRelationshipTypeChange: (value: RelationshipType) => void;
   onNotesChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 }
 
 interface RelationshipEditorSectionProps {
@@ -45,7 +45,7 @@ interface RelationshipEditorSectionProps {
   onToEntityChange: (value: string) => void;
   onRelationshipTypeChange: (value: RelationshipType) => void;
   onNotesChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onDelete: (relationshipId: string) => void | Promise<void>;
 }
 

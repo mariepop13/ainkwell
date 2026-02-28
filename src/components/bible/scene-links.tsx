@@ -29,7 +29,7 @@ interface SceneLinkFormProps {
   onEntityChange: (value: string) => void;
   onSceneChange: (value: string) => void;
   onNotesChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 }
 
 interface SceneLinksSectionProps {
@@ -45,7 +45,7 @@ interface SceneLinksSectionProps {
   onEntityChange: (value: string) => void;
   onSceneChange: (value: string) => void;
   onNotesChange: (value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onDelete: (sceneLinkId: string) => void | Promise<void>;
 }
 

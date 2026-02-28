@@ -41,7 +41,7 @@ export interface SceneLinksEditorState {
   setEntityId: (value: string) => void;
   setSceneId: (value: string) => void;
   setNotes: (value: string) => void;
-  handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }
 
 function useSceneLinkFormState(): SceneLinkFormStateActions {
@@ -98,16 +98,24 @@ function createSubmitHandler({
   resolvedSceneId: string;
   onSave: (input: SaveBibleSceneLinkInput) => void | Promise<void>;
   resetNotes: () => void;
-}): (event: FormEvent<HTMLFormElement>) => void {
-  return (event: FormEvent<HTMLFormElement>): void => {
+}): (event: FormEvent<HTMLFormElement>) => Promise<void> {
+  return async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    void onSave({
-      projectId,
-      entityId: resolvedEntityId,
-      sceneId: resolvedSceneId,
-      notes: state.notes,
-    });
-    resetNotes();
+    if (!resolvedEntityId || !resolvedSceneId) {
+      return;
+    }
+
+    try {
+      await onSave({
+        projectId,
+        entityId: resolvedEntityId,
+        sceneId: resolvedSceneId,
+        notes: state.notes,
+      });
+      resetNotes();
+    } catch {
+      // Keep notes so users can retry after a failed save.
+    }
   };
 }
 

@@ -3,8 +3,8 @@ import { BibleService, BibleValidationError } from '@/application/bible/bible-se
 import { LocalBibleRepository } from '@/data/bible/local-bible-repository';
 import type { BibleEntityCategory } from '@/domain/bible/types';
 
-const PROJECT_A = 'project-a';
-const PROJECT_B = 'project-b';
+const PROJECT_A = '8b5d05ea-3f90-4fd4-91cb-c18edfd3de71';
+const PROJECT_B = '6a7c61fb-5f70-47d5-aac9-f1f466f13de4';
 
 function createService(projectId?: string): BibleService {
   const repository = new LocalBibleRepository(window.localStorage);
