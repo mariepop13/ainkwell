@@ -81,54 +81,72 @@ export const writingProjectSchema = z
     scenes: z.record(projectSceneSchema),
   })
   .superRefine((value, context) => {
-    const orderedSceneIdentifiers = new Set<string>();
-
-    for (const sceneId of value.sceneOrder) {
-      if (orderedSceneIdentifiers.has(sceneId)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Duplicate scene reference for ${sceneId}.`,
-          path: ['sceneOrder'],
-        });
-        continue;
-      }
-
-      orderedSceneIdentifiers.add(sceneId);
-      if (!(sceneId in value.scenes)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Missing scene reference for ${sceneId}.`,
-          path: ['sceneOrder'],
-        });
-      }
-    }
-
-    for (const [sceneId, scene] of Object.entries(value.scenes)) {
-      if (!orderedSceneIdentifiers.has(sceneId)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Scene ${sceneId} is missing from sceneOrder.`,
-          path: ['scenes', sceneId],
-        });
-      }
-
-      if (scene.id !== sceneId) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Scene key ${sceneId} does not match scene.id.`,
-          path: ['scenes', sceneId, 'id'],
-        });
-      }
-
-      if (scene.projectId !== value.id) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Scene ${sceneId} belongs to another project.`,
-          path: ['scenes', sceneId, 'projectId'],
-        });
-      }
-    }
+    const orderedSceneIds = validateOrderedScenes(value.sceneOrder, value.scenes, context);
+    validateSceneRecordEntries(value.id, orderedSceneIds, value.scenes, context);
   });
+
+function addCustomIssue(
+  context: z.RefinementCtx,
+  message: string,
+  path: Array<string>,
+): void {
+  context.addIssue({
+    code: z.ZodIssueCode.custom,
+    message,
+    path,
+  });
+}
+
+function validateOrderedScenes(
+  sceneOrder: string[],
+  scenes: Record<string, z.infer<typeof projectSceneSchema>>,
+  context: z.RefinementCtx,
+): Set<string> {
+  const orderedSceneIdentifiers = new Set<string>();
+
+  for (const sceneId of sceneOrder) {
+    if (orderedSceneIdentifiers.has(sceneId)) {
+      addCustomIssue(context, `Duplicate scene reference for ${sceneId}.`, ['sceneOrder']);
+      continue;
+    }
+
+    orderedSceneIdentifiers.add(sceneId);
+    if (!(sceneId in scenes)) {
+      addCustomIssue(context, `Missing scene reference for ${sceneId}.`, ['sceneOrder']);
+    }
+  }
+
+  return orderedSceneIdentifiers;
+}
+
+function validateSceneRecordEntries(
+  projectId: string,
+  orderedSceneIdentifiers: Set<string>,
+  scenes: Record<string, z.infer<typeof projectSceneSchema>>,
+  context: z.RefinementCtx,
+): void {
+  for (const [sceneId, scene] of Object.entries(scenes)) {
+    if (!orderedSceneIdentifiers.has(sceneId)) {
+      addCustomIssue(context, `Scene ${sceneId} is missing from sceneOrder.`, ['scenes', sceneId]);
+    }
+
+    if (scene.id !== sceneId) {
+      addCustomIssue(context, `Scene key ${sceneId} does not match scene.id.`, [
+        'scenes',
+        sceneId,
+        'id',
+      ]);
+    }
+
+    if (scene.projectId !== projectId) {
+      addCustomIssue(context, `Scene ${sceneId} belongs to another project.`, [
+        'scenes',
+        sceneId,
+        'projectId',
+      ]);
+    }
+  }
+}
 
 const legacyWritingProjectSchema = z.object({
   id: projectIdSchema,

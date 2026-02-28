@@ -154,52 +154,54 @@ function useLoadScene(
   patchViewState: ViewStateSetter,
   replaceViewState: ViewStateReplacer,
 ): void {
+  const { projectId, sceneId, service } = input;
+
   useEffect(() => {
-    const loadScene = async (): Promise<void> => {
-      patchViewState({ loadState: 'loading', saveError: null });
+    void loadSceneState({ projectId, sceneId, service }, runtimeRefs, patchViewState, replaceViewState);
+  }, [patchViewState, projectId, replaceViewState, runtimeRefs, sceneId, service]);
+}
 
-      try {
-        const result = await input.service.loadScene({
-          projectId: input.projectId,
-          sceneId: input.sceneId,
-        });
+async function loadSceneState(
+  input: UseSceneEditorInput,
+  runtimeRefs: SceneRuntimeRefs,
+  patchViewState: ViewStateSetter,
+  replaceViewState: ViewStateReplacer,
+): Promise<void> {
+  patchViewState({ loadState: 'loading', saveError: null });
 
-        if (!runtimeRefs.isMountedRef.current) {
-          return;
-        }
+  try {
+    const result = await input.service.loadScene({
+      projectId: input.projectId,
+      sceneId: input.sceneId,
+    });
 
-        if (result.state === 'project-not-found') {
-          applyUnavailableScene(runtimeRefs, replaceViewState, 'project-not-found');
-          return;
-        }
+    if (!runtimeRefs.isMountedRef.current) {
+      return;
+    }
 
-        if (result.state === 'scene-not-found') {
-          applyUnavailableScene(runtimeRefs, replaceViewState, 'scene-not-found');
-          return;
-        }
+    if (result.state !== 'ready') {
+      applyUnavailableScene(runtimeRefs, replaceViewState, result.state);
+      return;
+    }
 
-        applyLoadedScene({
-          runtimeRefs,
-          replaceViewState,
-          scene: result.scene,
-          previousSceneId: result.previousSceneId,
-          nextSceneId: result.nextSceneId,
-        });
-      } catch (error) {
-        if (!runtimeRefs.isMountedRef.current) {
-          return;
-        }
+    applyLoadedScene({
+      runtimeRefs,
+      replaceViewState,
+      scene: result.scene,
+      previousSceneId: result.previousSceneId,
+      nextSceneId: result.nextSceneId,
+    });
+  } catch (error) {
+    if (!runtimeRefs.isMountedRef.current) {
+      return;
+    }
 
-        patchViewState({
-          loadState: 'error',
-          isSaving: false,
-          saveError: input.service.toUserErrorMessage(error),
-        });
-      }
-    };
-
-    void loadScene();
-  }, [input.projectId, input.sceneId, input.service, patchViewState, replaceViewState, runtimeRefs]);
+    patchViewState({
+      loadState: 'error',
+      isSaving: false,
+      saveError: input.service.toUserErrorMessage(error),
+    });
+  }
 }
 
 function useAutosave(
