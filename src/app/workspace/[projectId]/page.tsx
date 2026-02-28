@@ -259,6 +259,25 @@ function ProjectScenesSection({ projectId, project, actions }: {
   );
 }
 
+function ProjectStoryBibleSection({ projectId }: { projectId: string }): ReactElement {
+  return (
+    <section className="rounded-lg border p-4">
+      <h2 className="text-2xl font-headline font-semibold">Story Bible</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Manage characters, locations, lore, and continuity links for this project.
+      </p>
+      <div className="mt-3">
+        <Link
+          className="inline-flex rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          href={`/workspace/${projectId}/bible`}
+        >
+          Open Story Bible
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function ProjectDetailView({
   project,
   projectId,
@@ -280,7 +299,7 @@ function ProjectDetailView({
 
       <ProjectStats project={project} />
       <ProjectScenesSection projectId={projectId} project={project} actions={actions} />
-
+      <ProjectStoryBibleSection projectId={projectId} />
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
         Back to workspace
       </Link>
@@ -298,34 +317,70 @@ function ProjectPageState({
   actions: SceneActions;
 }): ReactElement {
   if (!projectId) {
-    return <CenteredMessage description="The URL does not contain a valid project identifier." title="Invalid project id" />;
+    return renderInvalidProjectIdState();
   }
 
   if (detail.state === 'loading') {
-    return (
-      <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
-        <p>Loading project...</p>
-      </main>
-    );
+    return renderLoadingProjectState();
   }
 
   if (detail.state === 'not-found') {
-    return <CenteredMessage description="This project does not exist in local storage." title="Project not found" />;
+    return renderProjectNotFoundState();
   }
 
   if (detail.state === 'error') {
-    return <CenteredMessage description={detail.errorMessage ?? 'Unable to open project.'} title="Unable to open project" tone="destructive" />;
+    return renderProjectErrorState(detail.errorMessage);
   }
 
   if (!detail.project) {
-    return (
-      <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
-        <p>Unable to load project.</p>
-      </main>
-    );
+    return renderUnavailableProjectState();
   }
 
   return <ProjectDetailView project={detail.project} projectId={projectId} actions={actions} />;
+}
+
+function renderInvalidProjectIdState(): ReactElement {
+  return (
+    <CenteredMessage
+      description="The URL does not contain a valid project identifier."
+      title="Invalid project id"
+    />
+  );
+}
+
+function renderLoadingProjectState(): ReactElement {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
+      <p>Loading project...</p>
+    </main>
+  );
+}
+
+function renderProjectNotFoundState(): ReactElement {
+  return (
+    <CenteredMessage
+      description="This project does not exist in local storage."
+      title="Project not found"
+    />
+  );
+}
+
+function renderProjectErrorState(errorMessage: string | null): ReactElement {
+  return (
+    <CenteredMessage
+      description={errorMessage ?? 'Unable to open project.'}
+      title="Unable to open project"
+      tone="destructive"
+    />
+  );
+}
+
+function renderUnavailableProjectState(): ReactElement {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4">
+      <p>Unable to load project.</p>
+    </main>
+  );
 }
 
 export default function WorkspaceProjectPage(): ReactElement {
