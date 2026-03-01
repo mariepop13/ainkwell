@@ -10,12 +10,12 @@ const inter = Inter({
 
 const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
-  variable: '--font-space-grotesk',
+  variable: '--font-playfair',
 });
 
 const lora = Lora({
   subsets: ['latin'],
-  variable: '--font-merriweather',
+  variable: '--font-lora',
 });
 
 export const metadata: Metadata = {
