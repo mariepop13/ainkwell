@@ -1,7 +1,12 @@
+import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 
-import { WritingSessionProvider } from '@/context/writing-session-context';
 import { projectIdSchema } from '@/domain/project/schemas';
+
+const WritingSessionProvider = dynamic(
+  () => import('@/context/writing-session-context').then((m) => m.WritingSessionProvider),
+  { ssr: false },
+);
 
 export default async function ProjectLayout({
   children,
@@ -9,7 +14,7 @@ export default async function ProjectLayout({
 }: {
   children: ReactNode;
   params: Promise<{ projectId: string }>;
-}) {
+}): Promise<ReactNode> {
   const { projectId: projectIdParam } = await params;
   const parsed = projectIdSchema.safeParse(projectIdParam);
 
