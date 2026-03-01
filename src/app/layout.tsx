@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
 import { Inter, Lora, Playfair_Display } from 'next/font/google';
+import { ThemeToggle } from '@/components/theme-toggle';
 import './globals.css';
 
 const inter = Inter({
@@ -18,6 +19,8 @@ const lora = Lora({
   variable: '--font-lora',
 });
 
+const themeScript = `(function(){var t=localStorage.getItem('ainkwell:theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t!=='light'&&d)){document.documentElement.classList.add('dark')}})()`;
+
 export const metadata: Metadata = {
   title: 'Ainkwell',
   description: 'Open-source local-first writing app starter with Next.js',
@@ -34,8 +37,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${playfairDisplay.variable} ${lora.variable}`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body suppressHydrationWarning className="font-body antialiased">
         {children}
+        <ThemeToggle />
       </body>
     </html>
   );
