@@ -417,6 +417,13 @@ export function useBiblePageController(projectId: string): BiblePageController {
   const { searchValue, categoryFilter, tagFilter, entityFilters, setSearchValue, setCategoryFilter, setTagFilter } =
     useEntityFilters();
   const data = useBibleDataSnapshot(bibleService, project?.id ?? null, entityFilters);
+  useEffect(() => {
+    if (tagFilter.length === 0) return;
+    const validTags = tagFilter.filter((tag) => data.allTags.includes(tag));
+    if (validTags.length !== tagFilter.length) {
+      setTagFilter(validTags);
+    }
+  }, [data.allTags, tagFilter, setTagFilter]);
   const selection = useEntitySelection(data.entities);
   const runOperation = useRunBibleOperation(bibleService, project?.id ?? null, useRefreshTrigger());
   const { entityActions, relationshipActions, sceneLinkActions } = useBibleActions(runOperation, {

@@ -73,8 +73,10 @@ export function TagsInput({ tags, suggestedTags, onTagsChange }: TagsInputProps)
         Tags
       </label>
       <ActiveTagList tags={tags} onRemove={removeTag} />
+      <span id="tags-input-hint" className="sr-only">Press Enter or comma to add a tag</span>
       <input
         id="entity-tags"
+        aria-describedby="tags-input-hint"
         value={pendingInput}
         onChange={(event) => setPendingInput(event.target.value)}
         onKeyDown={handleKeyDown}

@@ -17,20 +17,24 @@ function TagFilterChips({
 }): ReactElement {
   return (
     <div className="flex flex-wrap gap-1">
-      {allTags.map((tag) => (
-        <button
-          key={tag}
-          type="button"
-          onClick={() => onToggle(tag)}
-          className={`rounded-full border px-2 py-0.5 text-xs font-medium transition-colors ${
-            activeTagFilter.includes(tag)
-              ? 'border-primary text-primary'
-              : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground'
-          }`}
-        >
-          {tag}
-        </button>
-      ))}
+      {allTags.map((tag) => {
+        const isActive = activeTagFilter.includes(tag);
+        return (
+          <button
+            key={tag}
+            type="button"
+            onClick={() => onToggle(tag)}
+            aria-pressed={isActive}
+            className={`rounded-full border px-2 py-0.5 text-xs font-medium transition-colors ${
+              isActive
+                ? 'border-primary text-primary'
+                : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground'
+            }`}
+          >
+            {tag}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -53,7 +57,7 @@ export function TagFilterPanel(
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-semibold">Tags</label>
+        <p className="text-sm font-semibold">Tags</p>
         {activeTagFilter.length > 0 ? (
           <button
             type="button"
