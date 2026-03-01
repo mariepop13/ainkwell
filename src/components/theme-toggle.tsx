@@ -35,7 +35,7 @@ export function ThemeToggle(): ReactElement {
       onClick={toggleTheme}
       type="button"
     >
-      {theme === 'dark' ? '☀️' : '🌙'}
+      <span aria-hidden="true">{theme === 'dark' ? '☀️' : '🌙'}</span>
     </button>
   );
 }

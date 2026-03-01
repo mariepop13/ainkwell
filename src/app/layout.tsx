@@ -19,7 +19,7 @@ const lora = Lora({
   variable: '--font-lora',
 });
 
-const themeScript = `(function(){var t=localStorage.getItem('ainkwell:theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t!=='light'&&d)){document.documentElement.classList.add('dark')}})()`;
+const themeScript = `(function(){var storedTheme=localStorage.getItem('ainkwell:theme');var prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;if(storedTheme==='dark'||(storedTheme!=='light'&&prefersDark)){document.documentElement.classList.add('dark')}})()`;
 
 export const metadata: Metadata = {
   title: 'Ainkwell',
