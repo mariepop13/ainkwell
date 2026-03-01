@@ -64,6 +64,7 @@ export interface BibleStorageDocument {
 export interface BibleEntityFilters {
   category?: BibleEntityCategory;
   search?: string;
+  tags?: string[];
 }
 
 export interface BibleRelationshipFilters {
