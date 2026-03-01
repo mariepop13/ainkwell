@@ -9,6 +9,7 @@ import { projectIdSchema } from '@/domain/project/schemas';
 import type { WritingProject } from '@/domain/project/types';
 import type {
   BibleEntityCategory,
+  BibleEntityFilters,
   SaveBibleEntityInput,
   SaveBibleRelationshipInput,
   SaveBibleSceneLinkInput,
@@ -27,6 +28,7 @@ export interface BibleDataSnapshot {
   relationships: ReturnType<BibleService['listRelationships']>;
   sceneLinks: ReturnType<BibleService['listSceneLinks']>;
   scenes: ReturnType<BibleService['listScenes']>;
+  allTags: string[];
 }
 
 export interface BiblePageController {
@@ -36,6 +38,7 @@ export interface BiblePageController {
   data: BibleDataSnapshot;
   searchValue: string;
   categoryFilter: BibleEntityCategory | 'all';
+  tagFilter: string[];
   selectedEntity: BibleDataSnapshot['entities'][number] | null;
   activeSelectedEntityId: string | null;
   entityError: string | null;
@@ -43,6 +46,7 @@ export interface BiblePageController {
   sceneLinkError: string | null;
   setSearchValue: (value: string) => void;
   setCategoryFilter: (value: BibleEntityCategory | 'all') => void;
+  setTagFilter: (tags: string[]) => void;
   onSelectEntity: (entityId: string) => void;
   onCreateEntity: () => void;
   onSaveEntity: (input: SaveBibleEntityInput) => Promise<void>;
@@ -76,6 +80,7 @@ const EMPTY_BIBLE_DATA: BibleDataSnapshot = {
   relationships: [],
   sceneLinks: [],
   scenes: [],
+  allTags: [],
 };
 
 const LOADING_PROJECT_ACCESS: ProjectAccess = {
@@ -210,27 +215,26 @@ function useBibleService(projectAccess: ProjectAccess): BibleService | null {
   }, [projectAccess.project, projectAccess.state]);
 }
 
-function useEntityFilters(): {
-  searchValue: string;
-  categoryFilter: BibleEntityCategory | 'all';
-  entityFilters: { search: string; category?: BibleEntityCategory };
-  setSearchValue: (value: string) => void;
-  setCategoryFilter: (value: BibleEntityCategory | 'all') => void;
-} {
+function useEntityFilters() {
   const [searchValue, setSearchValue] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<BibleEntityCategory | 'all'>('all');
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
   const entityFilters = useMemo(
-    () => ({ search: searchValue, category: categoryFilter === 'all' ? undefined : categoryFilter }),
-    [categoryFilter, searchValue],
+    () => ({
+      search: searchValue,
+      category: categoryFilter === 'all' ? undefined : categoryFilter,
+      tags: tagFilter.length > 0 ? tagFilter : undefined,
+    }),
+    [categoryFilter, searchValue, tagFilter],
   );
 
-  return { searchValue, categoryFilter, entityFilters, setSearchValue, setCategoryFilter };
+  return { searchValue, categoryFilter, tagFilter, entityFilters, setSearchValue, setCategoryFilter, setTagFilter };
 }
 
 function useBibleDataSnapshot(
   bibleService: BibleService | null,
   projectId: string | null,
-  entityFilters: { search: string; category?: BibleEntityCategory },
+  entityFilters: BibleEntityFilters,
 ): BibleDataSnapshot {
   if (!bibleService || !projectId) {
     return EMPTY_BIBLE_DATA;
@@ -241,6 +245,7 @@ function useBibleDataSnapshot(
     relationships: bibleService.listRelationships(projectId),
     sceneLinks: bibleService.listSceneLinks(projectId),
     scenes: bibleService.listScenes(projectId),
+    allTags: bibleService.listAllTags(projectId),
   };
 }
 
@@ -395,22 +400,30 @@ function useSceneLinkActions(
   return { error, saveSceneLink, deleteSceneLink };
 }
 
+function useBibleActions(
+  runOperation: EntityActionParams['runOperation'],
+  entityParams: Omit<EntityActionParams, 'runOperation'>,
+) {
+  const entityActions = useEntityActions({ runOperation, ...entityParams });
+  const relationshipActions = useRelationshipActions(runOperation);
+  const sceneLinkActions = useSceneLinkActions(runOperation);
+  return { entityActions, relationshipActions, sceneLinkActions };
+}
+
 export function useBiblePageController(projectId: string): BiblePageController {
   const projectAccess = useProjectAccess(projectId);
   const { project } = projectAccess;
   const bibleService = useBibleService(projectAccess);
-  const { searchValue, categoryFilter, entityFilters, setSearchValue, setCategoryFilter } = useEntityFilters();
+  const { searchValue, categoryFilter, tagFilter, entityFilters, setSearchValue, setCategoryFilter, setTagFilter } =
+    useEntityFilters();
   const data = useBibleDataSnapshot(bibleService, project?.id ?? null, entityFilters);
   const selection = useEntitySelection(data.entities);
   const runOperation = useRunBibleOperation(bibleService, project?.id ?? null, useRefreshTrigger());
-  const entityActions = useEntityActions({
-    runOperation,
+  const { entityActions, relationshipActions, sceneLinkActions } = useBibleActions(runOperation, {
     activeSelectedEntityId: selection.activeSelectedEntityId,
     setSelectedEntityId: selection.setSelectedEntityId,
     setIsCreatingEntity: selection.setIsCreatingEntity,
   });
-  const relationshipActions = useRelationshipActions(runOperation);
-  const sceneLinkActions = useSceneLinkActions(runOperation);
   return {
     projectAccess,
     project,
@@ -418,6 +431,7 @@ export function useBiblePageController(projectId: string): BiblePageController {
     data,
     searchValue,
     categoryFilter,
+    tagFilter,
     selectedEntity: selection.selectedEntity,
     activeSelectedEntityId: selection.activeSelectedEntityId,
     entityError: entityActions.error,
@@ -425,6 +439,7 @@ export function useBiblePageController(projectId: string): BiblePageController {
     sceneLinkError: sceneLinkActions.error,
     setSearchValue,
     setCategoryFilter,
+    setTagFilter,
     onSelectEntity: selection.onSelectEntity,
     onCreateEntity: selection.onCreateEntity,
     onSaveEntity: entityActions.saveEntity,
