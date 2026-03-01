@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { WritingSessionProviderClient } from '@/components/writing-session/writing-session-provider-client';
+import { WritingSessionProvider } from '@/context/writing-session-context';
 import { projectIdSchema } from '@/domain/project/schemas';
 
 export default async function ProjectLayout({
@@ -18,8 +18,8 @@ export default async function ProjectLayout({
   }
 
   return (
-    <WritingSessionProviderClient projectId={parsed.data}>
+    <WritingSessionProvider projectId={parsed.data}>
       {children}
-    </WritingSessionProviderClient>
+    </WritingSessionProvider>
   );
 }

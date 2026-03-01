@@ -37,6 +37,15 @@ function upsertRecord<T extends { id: string }>(records: T[], record: T): void {
   }
 }
 
+const noOpStorage: Storage = {
+  getItem: () => null,
+  setItem: () => undefined,
+  removeItem: () => undefined,
+  clear: () => undefined,
+  key: () => null,
+  length: 0,
+};
+
 export class LocalWritingSessionRepository implements WritingSessionRepository {
   private readonly storage: Storage;
 
@@ -51,7 +60,7 @@ export class LocalWritingSessionRepository implements WritingSessionRepository {
       return;
     }
 
-    throw new Error('Storage backend is unavailable');
+    this.storage = noOpStorage;
   }
 
   public getProjectData(projectId: string): ProjectSessionData {
