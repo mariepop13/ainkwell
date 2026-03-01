@@ -78,11 +78,26 @@ export class LocalBibleRepository implements BibleRepository {
     const { entities } = this.readBible(projectId);
     const category = filters?.category;
     const searchTerm = filters?.search?.trim().toLowerCase();
+    const tags = filters?.tags;
 
     return entities
       .filter((entity) => (category ? entity.category === category : true))
       .filter((entity) => (searchTerm ? toSearchHaystack(entity).includes(searchTerm) : true))
+      .filter((entity) => {
+        if (!tags || tags.length === 0) return true;
+        const entityTagSet = new Set(entity.tags);
+        return tags.every((tag) => entityTagSet.has(tag));
+      })
       .sort((left, right) => toComparableDate(right.updatedAt) - toComparableDate(left.updatedAt));
+  }
+
+  public listAllTags(projectId: string): string[] {
+    const { entities } = this.readBible(projectId);
+    const tagSet = new Set<string>();
+    for (const entity of entities) {
+      for (const tag of entity.tags) tagSet.add(tag);
+    }
+    return Array.from(tagSet).sort();
   }
 
   public getEntity(projectId: string, entityId: string): BibleEntity | null {

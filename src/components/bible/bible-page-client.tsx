@@ -72,8 +72,11 @@ function BiblePanels({
         selectedEntityId={controller.activeSelectedEntityId}
         searchValue={controller.searchValue}
         categoryFilter={controller.categoryFilter}
+        allTags={controller.data.allTags}
+        activeTagFilter={controller.tagFilter}
         onSearchChange={controller.setSearchValue}
         onCategoryFilterChange={controller.setCategoryFilter}
+        onTagFilterChange={controller.setTagFilter}
         onSelectEntity={controller.onSelectEntity}
         onCreateEntity={controller.onCreateEntity}
       />
@@ -96,6 +99,7 @@ function BibleEditorsColumn({
         projectId={project.id}
         selectedEntity={controller.selectedEntity}
         errorMessage={controller.entityError}
+        suggestedTags={controller.data.allTags}
         onSave={controller.onSaveEntity}
         onDelete={controller.onDeleteEntity}
       />
