@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent, ReactElement } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface DailyGoalFormProps {
   currentGoal: number | null;
@@ -44,6 +44,10 @@ function GoalInputRow({ value, onChange }: { value: string; onChange: (value: st
 export function DailyGoalForm({ currentGoal, onSave }: DailyGoalFormProps): ReactElement {
   const [inputValue, setInputValue] = useState<string>(currentGoal?.toString() ?? '');
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setInputValue(currentGoal?.toString() ?? '');
+  }, [currentGoal]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();

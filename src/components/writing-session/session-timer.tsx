@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactElement } from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SessionTimerProps {
   isRunning: boolean;
@@ -20,6 +20,12 @@ function formatDuration(totalSeconds: number): string {
 export function SessionTimer({ isRunning, elapsedSeconds, onStart, onStop }: SessionTimerProps): ReactElement {
   const [isStopping, setIsStopping] = useState<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleStop = async (): Promise<void> => {
     setIsStopping(true);

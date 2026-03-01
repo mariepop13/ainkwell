@@ -62,18 +62,23 @@ export default function WritingGoalsPage(): ReactElement {
   const projectService = useMemo(() => createProjectService(repository), [repository]);
 
   const [project, setProject] = useState<WritingProject | null>(null);
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'not-found'>('loading');
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'not-found' | 'error'>('loading');
 
   useEffect(() => {
     let isMounted = true;
 
     if (projectId) {
-      void projectService.getProjectById(projectId).then((loaded) => {
-        if (!isMounted) return;
-        if (!loaded) { setLoadState('not-found'); return; }
-        setProject(loaded);
-        setLoadState('ready');
-      });
+      void projectService.getProjectById(projectId)
+        .then((loaded) => {
+          if (!isMounted) return;
+          if (!loaded) { setLoadState('not-found'); return; }
+          setProject(loaded);
+          setLoadState('ready');
+        })
+        .catch(() => {
+          if (!isMounted) return;
+          setLoadState('error');
+        });
     }
 
     return () => {
@@ -87,6 +92,18 @@ export default function WritingGoalsPage(): ReactElement {
 
   if (loadState === 'loading') {
     return <LoadingMessage />;
+  }
+
+  if (loadState === 'error') {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col items-start justify-center gap-3 px-4">
+        <h1 className="text-2xl font-headline font-semibold">Unable to load project</h1>
+        <p className="text-sm text-destructive">An error occurred while loading this project.</p>
+        <Link className="text-sm font-medium text-primary underline" href="/workspace">
+          Back to workspace
+        </Link>
+      </main>
+    );
   }
 
   if (loadState === 'not-found' || !project) {
