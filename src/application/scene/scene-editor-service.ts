@@ -21,6 +21,7 @@ type SaveSceneInput = {
 type CreateSceneInput = {
   projectId: string;
   title: string;
+  chapterId?: string;
 };
 
 type ListProjectScenesInput = {

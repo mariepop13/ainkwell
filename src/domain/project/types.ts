@@ -20,6 +20,38 @@ export type ProjectScene = {
   updatedAt: string;
 };
 
+export type ProjectChapter = {
+  id: string;
+  projectId: string;
+  title: string;
+  sceneOrder: string[];
+  wordCount: number;
+  createdAt: string;
+};
+
+export type ChapterSummary = {
+  id: string;
+  projectId: string;
+  title: string;
+  sceneCount: number;
+  wordCount: number;
+};
+
+export type CreateChapterInput = {
+  projectId: string;
+  title: string;
+};
+
+export type UpdateChapterInput = {
+  title?: string;
+};
+
+export type MoveSceneToChapterInput = {
+  projectId: string;
+  sceneId: string;
+  targetChapterId: string;
+};
+
 export type WritingProject = {
   id: string;
   title: string;
@@ -28,7 +60,8 @@ export type WritingProject = {
   updatedAt: string;
   stats: ProjectStats;
   settings: ProjectSettings;
-  sceneOrder: string[];
+  chapterOrder: string[];
+  chapters: Record<string, ProjectChapter>;
   scenes: Record<string, ProjectScene>;
 };
 

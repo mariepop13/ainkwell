@@ -27,8 +27,14 @@ const buildLegacyWorkspaceStore = (projectId: string) => ({
   },
 });
 
+const getFirstSceneId = (project: { chapterOrder: string[]; chapters: Record<string, { sceneOrder: string[] }> }): string | undefined => {
+  const firstChapterId = project.chapterOrder[0];
+  if (!firstChapterId) return undefined;
+  return project.chapters[firstChapterId]?.sceneOrder[0];
+};
+
 describe('LocalProjectRepository scene storage', () => {
-  it('creates a new scene and appends it to sceneOrder', async () => {
+  it('creates a new scene and appends it to the last chapter', async () => {
     window.localStorage.clear();
     const repository = new LocalProjectRepository();
     const project = await repository.create({
@@ -43,7 +49,8 @@ describe('LocalProjectRepository scene storage', () => {
 
     const updatedProject = await repository.getById(project.id);
     expect(updatedProject).not.toBeNull();
-    expect(updatedProject?.sceneOrder.includes(createdScene.id)).toBe(true);
+    const chapterId = updatedProject!.chapterOrder[0]!;
+    expect(updatedProject!.chapters[chapterId]?.sceneOrder).toContain(createdScene.id);
     expect(updatedProject?.stats.sceneCount).toBe(2);
   });
 
@@ -54,7 +61,7 @@ describe('LocalProjectRepository scene storage', () => {
       title: 'Persisted scene project',
       description: '',
     });
-    const sceneId = project.sceneOrder[0]!;
+    const sceneId = getFirstSceneId(project)!;
     const updatedAt = '2026-02-25T12:10:00.000Z';
 
     await repository.saveScene({
@@ -84,7 +91,7 @@ describe('LocalProjectRepository scene storage', () => {
       title: 'Size limited project',
       description: '',
     });
-    const sceneId = project.sceneOrder[0]!;
+    const sceneId = getFirstSceneId(project)!;
     const oversizedContent = 'a'.repeat(maxSceneContentLength + 1);
 
     await expect(

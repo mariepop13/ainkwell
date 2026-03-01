@@ -30,6 +30,9 @@ const sceneContentSchema = z.string().max(maxSceneContentLength, {
 });
 const sceneIdSchema = z.string().trim().min(1);
 
+export const chapterIdSchema = z.string().trim().min(1);
+const chapterTitleSchema = z.string().trim().min(1).max(120);
+
 export const projectIdSchema = z
   .string()
   .trim()
@@ -68,6 +71,20 @@ export const projectSceneSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
 });
 
+export const projectChapterSchema = z.object({
+  id: chapterIdSchema,
+  projectId: projectIdSchema,
+  title: chapterTitleSchema,
+  sceneOrder: z.array(sceneIdSchema),
+  wordCount: nonNegativeIntegerSchema,
+  createdAt: z.string().datetime({ offset: true }),
+});
+
+export const createChapterInputSchema = z.object({
+  projectId: projectIdSchema,
+  title: chapterTitleSchema,
+});
+
 export const writingProjectSchema = z
   .object({
     id: projectIdSchema,
@@ -77,11 +94,12 @@ export const writingProjectSchema = z
     updatedAt: z.string().datetime({ offset: true }),
     stats: projectStatsSchema,
     settings: projectSettingsSchema,
-    sceneOrder: z.array(sceneIdSchema),
+    chapterOrder: z.array(chapterIdSchema),
+    chapters: z.record(projectChapterSchema),
     scenes: z.record(projectSceneSchema),
   })
   .superRefine((value, context) => {
-    const orderedSceneIds = validateOrderedScenes(value.sceneOrder, value.scenes, context);
+    const orderedSceneIds = validateChapterSceneGraph(value, context);
     validateSceneRecordEntries(value.id, orderedSceneIds, value.scenes, context);
   });
 
@@ -97,37 +115,76 @@ function addCustomIssue(
   });
 }
 
-function validateOrderedScenes(
-  sceneOrder: string[],
-  scenes: Record<string, z.infer<typeof projectSceneSchema>>,
+function validateChapterSceneGraph(
+  value: {
+    chapterOrder: string[];
+    chapters: Record<string, z.infer<typeof projectChapterSchema>>;
+    scenes: Record<string, z.infer<typeof projectSceneSchema>>;
+  },
   context: z.RefinementCtx,
 ): Set<string> {
-  const orderedSceneIdentifiers = new Set<string>();
+  const orderedChapterIds = new Set<string>();
+  const orderedSceneIds = new Set<string>();
 
-  for (const sceneId of sceneOrder) {
-    if (orderedSceneIdentifiers.has(sceneId)) {
-      addCustomIssue(context, `Duplicate scene reference for ${sceneId}.`, ['sceneOrder']);
+  for (const chapterId of value.chapterOrder) {
+    if (orderedChapterIds.has(chapterId)) {
+      addCustomIssue(context, `Duplicate chapter reference for ${chapterId}.`, ['chapterOrder']);
+      continue;
+    }
+    orderedChapterIds.add(chapterId);
+
+    if (!(chapterId in value.chapters)) {
+      addCustomIssue(context, `Missing chapter for id ${chapterId}.`, ['chapterOrder']);
       continue;
     }
 
-    orderedSceneIdentifiers.add(sceneId);
-    if (!(sceneId in scenes)) {
-      addCustomIssue(context, `Missing scene reference for ${sceneId}.`, ['sceneOrder']);
+    const chapter = value.chapters[chapterId]!;
+    for (const sceneId of chapter.sceneOrder) {
+      if (orderedSceneIds.has(sceneId)) {
+        addCustomIssue(
+          context,
+          `Scene ${sceneId} appears in more than one chapter.`,
+          ['chapters', chapterId, 'sceneOrder'],
+        );
+        continue;
+      }
+      orderedSceneIds.add(sceneId);
+
+      if (!(sceneId in value.scenes)) {
+        addCustomIssue(
+          context,
+          `Missing scene reference for ${sceneId}.`,
+          ['chapters', chapterId, 'sceneOrder'],
+        );
+      }
     }
   }
 
-  return orderedSceneIdentifiers;
+  for (const chapterId of Object.keys(value.chapters)) {
+    if (!orderedChapterIds.has(chapterId)) {
+      addCustomIssue(
+        context,
+        `Chapter ${chapterId} is missing from chapterOrder.`,
+        ['chapters', chapterId],
+      );
+    }
+  }
+
+  return orderedSceneIds;
 }
 
 function validateSceneRecordEntries(
   projectId: string,
-  orderedSceneIdentifiers: Set<string>,
+  orderedSceneIds: Set<string>,
   scenes: Record<string, z.infer<typeof projectSceneSchema>>,
   context: z.RefinementCtx,
 ): void {
   for (const [sceneId, scene] of Object.entries(scenes)) {
-    if (!orderedSceneIdentifiers.has(sceneId)) {
-      addCustomIssue(context, `Scene ${sceneId} is missing from sceneOrder.`, ['scenes', sceneId]);
+    if (!orderedSceneIds.has(sceneId)) {
+      addCustomIssue(context, `Scene ${sceneId} is missing from all chapter sceneOrders.`, [
+        'scenes',
+        sceneId,
+      ]);
     }
 
     if (scene.id !== sceneId) {
@@ -158,15 +215,33 @@ const legacyWritingProjectSchema = z.object({
   settings: projectSettingsSchema,
 });
 
+const legacyV2WritingProjectSchema = z.object({
+  id: projectIdSchema,
+  title: projectTitleSchema,
+  description: projectDescriptionSchema,
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+  stats: projectStatsSchema,
+  settings: projectSettingsSchema,
+  sceneOrder: z.array(sceneIdSchema),
+  scenes: z.record(projectSceneSchema),
+});
+
 export const legacyProjectStorageSchema = z.object({
   version: z.literal(1),
   projects: z.array(legacyWritingProjectSchema),
 });
 
-export const projectStorageSchema = z.object({
+export const v2ProjectStorageSchema = z.object({
   version: z.literal(2),
+  projects: z.array(legacyV2WritingProjectSchema),
+});
+
+export const projectStorageSchema = z.object({
+  version: z.literal(3),
   projects: z.array(writingProjectSchema),
 });
 
 export type LegacyProjectStorage = z.infer<typeof legacyProjectStorageSchema>;
+export type V2ProjectStorage = z.infer<typeof v2ProjectStorageSchema>;
 export type ProjectStorage = z.infer<typeof projectStorageSchema>;
