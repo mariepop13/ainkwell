@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactElement } from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 
 import {
   SceneEditorService,
@@ -11,6 +11,7 @@ import {
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
+import { WritingSessionContext } from '@/context/writing-session-context';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
@@ -223,29 +224,19 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     [props.writingService],
   );
 
-  const sessionWordsRef = useRef(0);
-  const writingSession = useWritingSession({ projectId: props.projectId, service: writingService });
-
-  const handleWordsSaved = useCallback((delta: number): void => {
-    sessionWordsRef.current += delta;
-    writingSession.onWordsSaved(delta);
-  }, [writingSession]);
-
-  const handleSessionStart = useCallback((): void => {
-    sessionWordsRef.current = 0;
-    writingSession.startSession();
-  }, [writingSession]);
+  const contextSession = useContext(WritingSessionContext);
+  const localSession = useWritingSession({ projectId: props.projectId, service: writingService });
+  const writingSession = contextSession ?? localSession;
 
   const handleSessionStop = useCallback(async (): Promise<void> => {
-    await writingSession.stopSession(sessionWordsRef.current);
-    sessionWordsRef.current = 0;
+    await writingSession.stopSession();
   }, [writingSession]);
 
   const sceneEditor = useSceneEditor({
     projectId: props.projectId,
     sceneId: props.sceneId,
     service,
-    onWordsSaved: handleWordsSaved,
+    onWordsSaved: writingSession.onWordsSaved,
   });
   const stateView = getSceneStateView({
     projectId: props.projectId,
@@ -264,7 +255,7 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
       sceneEditor={sceneEditor}
       isSessionRunning={writingSession.isRunning}
       sessionElapsedSeconds={writingSession.elapsedSeconds}
-      onSessionStart={handleSessionStart}
+      onSessionStart={writingSession.startSession}
       onSessionStop={handleSessionStop}
     />
   );

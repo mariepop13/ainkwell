@@ -66,7 +66,7 @@ describe('useWritingSession', () => {
     });
 
     await act(async () => {
-      await result.current.stopSession(100);
+      await result.current.stopSession();
     });
 
     expect(result.current.isRunning).toBe(false);

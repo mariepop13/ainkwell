@@ -27,7 +27,7 @@ export type UseWritingSessionResult = {
   elapsedSeconds: number;
   error: string | null;
   startSession: () => void;
-  stopSession: (wordsWritten: number) => Promise<void>;
+  stopSession: () => Promise<void>;
   setDailyGoal: (goal: number | null) => void;
   onWordsSaved: (delta: number) => void;
 };
@@ -80,9 +80,10 @@ function useStartStop(
     }
   }, [input, patchViewState, runtimeRefs]);
 
-  const stopSession = useCallback(async (wordsWritten: number): Promise<void> => {
+  const stopSession = useCallback(async (): Promise<void> => {
     const sessionId = runtimeRefs.sessionIdRef.current;
     if (!sessionId) return;
+    const wordsWritten = runtimeRefs.wordsDeltaRef.current;
     clearSessionInterval(runtimeRefs.intervalRef);
     assignSessionRef(runtimeRefs.sessionIdRef, null);
     assignSessionRef(runtimeRefs.wordsDeltaRef, 0);
