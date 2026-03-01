@@ -78,7 +78,7 @@ function useStartStop(
     } catch {
       patchViewState({ error: 'Failed to start writing session.' });
     }
-  }, [input, patchViewState, runtimeRefs]);
+  }, [input.projectId, input.service, patchViewState, runtimeRefs]);
 
   const stopSession = useCallback(async (): Promise<void> => {
     const sessionId = runtimeRefs.sessionIdRef.current;
@@ -94,7 +94,7 @@ function useStartStop(
     } catch {
       patchViewState({ isRunning: false, elapsedSeconds: 0, error: 'Failed to save writing session.' });
     }
-  }, [input, patchViewState, runtimeRefs]);
+  }, [input.projectId, input.service, patchViewState, runtimeRefs]);
 
   return { startSession, stopSession };
 }
@@ -112,7 +112,7 @@ function useGoalAndWords(
     } catch {
       patchViewState({ error: 'Failed to update daily goal.' });
     }
-  }, [input, loadDashboard, patchViewState]);
+  }, [input.projectId, input.service, loadDashboard, patchViewState]);
 
   const onWordsSaved = useCallback((delta: number): void => {
     if (!runtimeRefs.sessionIdRef.current) return;
