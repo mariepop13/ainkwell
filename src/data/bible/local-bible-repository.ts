@@ -48,6 +48,15 @@ function toSearchHaystack(entity: BibleEntity): string {
   return [entity.name, entity.summary, entity.tags.join(' ')].join(' ').toLowerCase();
 }
 
+function upsertRecord<T extends { id: string }>(records: T[], record: T): void {
+  const index = records.findIndex((item) => item.id === record.id);
+  if (index < 0) {
+    records.push(record);
+  } else {
+    records[index] = record;
+  }
+}
+
 export class LocalBibleRepository implements BibleRepository {
   private readonly storage: Storage;
 
@@ -91,14 +100,7 @@ export class LocalBibleRepository implements BibleRepository {
     const parsedEntity = bibleEntitySchema.parse(entity);
     const normalizedProjectId = normalizeProjectId(parsedEntity.projectId);
     const bibleStorage = this.readBible(normalizedProjectId);
-    const entityIndex = bibleStorage.entities.findIndex((item) => item.id === parsedEntity.id);
-
-    if (entityIndex < 0) {
-      bibleStorage.entities.push(parsedEntity);
-    } else {
-      bibleStorage.entities[entityIndex] = parsedEntity;
-    }
-
+    upsertRecord(bibleStorage.entities, parsedEntity);
     this.writeBible(normalizedProjectId, bibleStorage);
     return parsedEntity;
   }
@@ -145,16 +147,7 @@ export class LocalBibleRepository implements BibleRepository {
     const parsedRelationship = bibleRelationshipSchema.parse(relationship);
     const normalizedProjectId = normalizeProjectId(parsedRelationship.projectId);
     const bibleStorage = this.readBible(normalizedProjectId);
-    const relationshipIndex = bibleStorage.relationships.findIndex(
-      (item) => item.id === parsedRelationship.id,
-    );
-
-    if (relationshipIndex < 0) {
-      bibleStorage.relationships.push(parsedRelationship);
-    } else {
-      bibleStorage.relationships[relationshipIndex] = parsedRelationship;
-    }
-
+    upsertRecord(bibleStorage.relationships, parsedRelationship);
     this.writeBible(normalizedProjectId, bibleStorage);
     return parsedRelationship;
   }
@@ -190,14 +183,7 @@ export class LocalBibleRepository implements BibleRepository {
     const parsedSceneLink = bibleSceneLinkSchema.parse(sceneLink);
     const normalizedProjectId = normalizeProjectId(parsedSceneLink.projectId);
     const bibleStorage = this.readBible(normalizedProjectId);
-    const sceneLinkIndex = bibleStorage.sceneLinks.findIndex((item) => item.id === parsedSceneLink.id);
-
-    if (sceneLinkIndex < 0) {
-      bibleStorage.sceneLinks.push(parsedSceneLink);
-    } else {
-      bibleStorage.sceneLinks[sceneLinkIndex] = parsedSceneLink;
-    }
-
+    upsertRecord(bibleStorage.sceneLinks, parsedSceneLink);
     this.writeBible(normalizedProjectId, bibleStorage);
     return parsedSceneLink;
   }
@@ -221,14 +207,7 @@ export class LocalBibleRepository implements BibleRepository {
     const parsedScene = projectSceneSchema.parse(scene);
     const normalizedProjectId = normalizeProjectId(parsedScene.projectId);
     const projectScenes = this.readScenes(normalizedProjectId);
-    const sceneIndex = projectScenes.findIndex((item) => item.id === parsedScene.id);
-
-    if (sceneIndex < 0) {
-      projectScenes.push(parsedScene);
-    } else {
-      projectScenes[sceneIndex] = parsedScene;
-    }
-
+    upsertRecord(projectScenes, parsedScene);
     this.writeScenes(normalizedProjectId, projectScenes);
     return parsedScene;
   }
