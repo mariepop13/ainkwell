@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactElement } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 
 import {
   SceneEditorService,
@@ -10,6 +10,8 @@ import {
 } from '@/application/scene/scene-editor-service';
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
+import { SessionTimer } from '@/components/writing-session/session-timer';
+import { WritingSessionContext } from '@/context/writing-session-context';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
@@ -154,6 +156,10 @@ function SceneEditorNavigation(props: SceneEditorNavigationProps): ReactElement 
 type SceneEditorLoadedViewProps = {
   projectId: string;
   sceneEditor: UseSceneEditorResult;
+  isSessionRunning: boolean;
+  sessionElapsedSeconds: number;
+  onSessionStart: () => void;
+  onSessionStop: () => Promise<void>;
 };
 
 function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement {
@@ -177,6 +183,13 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
         saveError={props.sceneEditor.saveError}
         onStatusChange={props.sceneEditor.setStatus}
         onRetrySave={props.sceneEditor.retrySave}
+      />
+
+      <SessionTimer
+        isRunning={props.isSessionRunning}
+        elapsedSeconds={props.sessionElapsedSeconds}
+        onStart={props.onSessionStart}
+        onStop={props.onSessionStop}
       />
 
       <section className="flex-1 rounded-xl border bg-card p-4 text-card-foreground">
@@ -211,7 +224,14 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     [props.writingService],
   );
 
-  const writingSession = useWritingSession({ projectId: props.projectId, service: writingService });
+  const contextSession = useContext(WritingSessionContext);
+  const localSession = useWritingSession({ projectId: props.projectId, service: writingService });
+  const writingSession = contextSession ?? localSession;
+
+  const handleSessionStop = useCallback(async (): Promise<void> => {
+    await writingSession.stopSession();
+  }, [writingSession]);
+
   const sceneEditor = useSceneEditor({
     projectId: props.projectId,
     sceneId: props.sceneId,
@@ -229,5 +249,14 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     return stateView;
   }
 
-  return <SceneEditorLoadedView projectId={props.projectId} sceneEditor={sceneEditor} />;
+  return (
+    <SceneEditorLoadedView
+      projectId={props.projectId}
+      sceneEditor={sceneEditor}
+      isSessionRunning={writingSession.isRunning}
+      sessionElapsedSeconds={writingSession.elapsedSeconds}
+      onSessionStart={writingSession.startSession}
+      onSessionStop={handleSessionStop}
+    />
+  );
 }

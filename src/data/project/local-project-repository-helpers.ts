@@ -1,11 +1,18 @@
 import {
   legacyProjectStorageSchema,
   projectStorageSchema,
+  v2ProjectStorageSchema,
   writingProjectSchema,
   type LegacyProjectStorage,
   type ProjectStorage,
+  type V2ProjectStorage,
 } from '@/domain/project/schemas';
-import type { ProjectSettings, ProjectStats, WritingProject } from '@/domain/project/types';
+import type {
+  ProjectChapter,
+  ProjectSettings,
+  ProjectStats,
+  WritingProject,
+} from '@/domain/project/types';
 import {
   sceneSchema,
   workspaceStoreSchema,
@@ -14,11 +21,12 @@ import {
 import type { Scene } from '@/domain/scene/types';
 import { generateProjectId } from '@/lib/utils';
 
-export const PROJECT_STORAGE_VERSION = 2 as const;
+export const PROJECT_STORAGE_VERSION = 3 as const;
 export const browserOnlyRepositoryMessage = 'Local project repository is available only in the browser.';
 export const defaultSceneContent = '';
 const importedDemoProjectTitle = 'Imported Demo Project';
 const defaultSceneTitle = 'Scene 1';
+const defaultChapterTitle = 'Chapter 1';
 const defaultSceneStatus: Scene['status'] = 'draft';
 
 type MergeLegacyInput = {
@@ -64,17 +72,20 @@ const countWords = (content: string): number => {
   return trimmedContent.split(/\s+/).filter(Boolean).length;
 };
 
-const calculateProjectWordCount = (project: Pick<WritingProject, 'sceneOrder' | 'scenes'>): number =>
-  project.sceneOrder.reduce<number>((totalWords, sceneId) => {
-    const scene = project.scenes[sceneId];
+const calculateChapterWordCount = (
+  chapter: ProjectChapter,
+  scenes: Record<string, { content: string }>,
+): number =>
+  chapter.sceneOrder.reduce<number>((total, sceneId) => {
+    const scene = scenes[sceneId];
     if (!scene) {
-      return totalWords;
+      return total;
     }
 
-    return totalWords + countWords(scene.content);
+    return total + countWords(scene.content);
   }, 0);
 
-const parseV2ProjectStorage = (value: unknown): ProjectStorage | null => {
+const parseV3ProjectStorage = (value: unknown): ProjectStorage | null => {
   const validatedStorage = projectStorageSchema.safeParse(value);
   if (!validatedStorage.success) {
     return null;
@@ -108,15 +119,43 @@ export const sortProjectsByUpdatedAt = (projects: WritingProject[]): WritingProj
       new Date(rightProject.updatedAt).getTime() - new Date(leftProject.updatedAt).getTime(),
   );
 
-export const withRecalculatedStats = (project: WritingProject): WritingProject =>
-  writingProjectSchema.parse({
+export const createDefaultChapter = (projectId: string, createdAt: string): ProjectChapter => ({
+  id: generateProjectId(),
+  projectId,
+  title: defaultChapterTitle,
+  sceneOrder: [],
+  wordCount: 0,
+  createdAt,
+});
+
+export const withRecalculatedStats = (project: WritingProject): WritingProject => {
+  const updatedChapters = { ...project.chapters };
+  let totalWordCount = 0;
+  let totalSceneCount = 0;
+
+  for (const chapterId of project.chapterOrder) {
+    const chapter = project.chapters[chapterId];
+    if (!chapter) {
+      continue;
+    }
+
+    const chapterWordCount = calculateChapterWordCount(chapter, project.scenes);
+    updatedChapters[chapterId] = { ...chapter, wordCount: chapterWordCount };
+    totalWordCount += chapterWordCount;
+    totalSceneCount += chapter.sceneOrder.length;
+  }
+
+  return writingProjectSchema.parse({
     ...project,
+    chapters: updatedChapters,
     stats: {
       ...project.stats,
-      wordCount: calculateProjectWordCount(project),
-      sceneCount: project.sceneOrder.length,
+      wordCount: totalWordCount,
+      sceneCount: totalSceneCount,
+      chapterCount: project.chapterOrder.length,
     },
   });
+};
 
 export const createProjectScene = (input: CreateProjectSceneInput): Scene =>
   sceneSchema.parse({
@@ -150,13 +189,40 @@ export const getStorage = (): Storage | null => {
   }
 };
 
+const upgradeV2StorageToV3 = (v2Storage: V2ProjectStorage): ProjectStorage => ({
+  version: PROJECT_STORAGE_VERSION,
+  projects: v2Storage.projects.map((v2Project) => {
+    const chapter = createDefaultChapter(v2Project.id, v2Project.createdAt);
+    const chapterWithAllScenes = { ...chapter, sceneOrder: v2Project.sceneOrder };
+
+    const upgradedProject = writingProjectSchema.parse({
+      id: v2Project.id,
+      title: v2Project.title,
+      description: v2Project.description,
+      createdAt: v2Project.createdAt,
+      updatedAt: v2Project.updatedAt,
+      stats: v2Project.stats,
+      settings: v2Project.settings,
+      chapterOrder: [chapter.id],
+      chapters: { [chapter.id]: chapterWithAllScenes },
+      scenes: v2Project.scenes,
+    });
+
+    return withRecalculatedStats(upgradedProject);
+  }),
+});
+
 const upgradeLegacyProjectStorage = (legacyStorage: LegacyProjectStorage): ProjectStorage => ({
   version: PROJECT_STORAGE_VERSION,
   projects: legacyStorage.projects.map((legacyProject) => {
     const seedScene = createDefaultProjectScene(legacyProject.id, legacyProject.updatedAt);
+    const chapter = createDefaultChapter(legacyProject.id, legacyProject.createdAt);
+    const chapterWithScene = { ...chapter, sceneOrder: [seedScene.id] };
+
     const upgradedProject = writingProjectSchema.parse({
       ...legacyProject,
-      sceneOrder: [seedScene.id],
+      chapterOrder: [chapter.id],
+      chapters: { [chapter.id]: chapterWithScene },
       scenes: { [seedScene.id]: seedScene },
     });
 
@@ -177,9 +243,17 @@ export const parseProjectStorageValue = (rawStorageValue: string | null): ParseS
     return withFallbackStorage();
   }
 
-  const validatedStorage = parseV2ProjectStorage(parsedStorageValue);
-  if (validatedStorage) {
-    return { storage: validatedStorage, needsWrite: false };
+  const validatedV3Storage = parseV3ProjectStorage(parsedStorageValue);
+  if (validatedV3Storage) {
+    return { storage: validatedV3Storage, needsWrite: false };
+  }
+
+  const v2Storage = v2ProjectStorageSchema.safeParse(parsedStorageValue);
+  if (v2Storage.success) {
+    return {
+      storage: upgradeV2StorageToV3(v2Storage.data),
+      needsWrite: true,
+    };
   }
 
   const legacyStorage = legacyProjectStorageSchema.safeParse(parsedStorageValue);
@@ -219,8 +293,15 @@ const importScenesIntoProject = (
   importedAt: string,
 ): WritingProject => {
   const nextScenes: Record<string, Scene> = { ...project.scenes };
-  const nextSceneOrder = [...project.sceneOrder];
+  const nextChapters = { ...project.chapters };
+  const targetChapterId = project.chapterOrder[0];
   let importedCount = 0;
+
+  if (!targetChapterId || !nextChapters[targetChapterId]) {
+    return project;
+  }
+
+  const nextChapterSceneOrder = [...(nextChapters[targetChapterId]!.sceneOrder)];
 
   for (const legacySceneId of legacyProject.sceneOrder) {
     const legacyScene = legacyProject.scenes[legacySceneId];
@@ -237,7 +318,7 @@ const importScenesIntoProject = (
       status: legacyScene.status,
       updatedAt: legacyScene.updatedAt,
     });
-    nextSceneOrder.push(sceneId);
+    nextChapterSceneOrder.push(sceneId);
     importedCount += 1;
   }
 
@@ -245,11 +326,16 @@ const importScenesIntoProject = (
     return project;
   }
 
+  nextChapters[targetChapterId] = {
+    ...nextChapters[targetChapterId]!,
+    sceneOrder: nextChapterSceneOrder,
+  };
+
   return withRecalculatedStats(
     writingProjectSchema.parse({
       ...project,
+      chapters: nextChapters,
       scenes: nextScenes,
-      sceneOrder: nextSceneOrder,
       updatedAt: importedAt,
     }),
   );
@@ -272,8 +358,11 @@ const createImportedProjectFromLegacy = (
   legacyProject: WorkspaceStoreV1['projects'][string],
   importedAt: string,
 ): WritingProject => {
+  const projectId = generateProjectId();
+  const defaultChapter = createDefaultChapter(projectId, importedAt);
+
   const importedProject = writingProjectSchema.parse({
-    id: generateProjectId(),
+    id: projectId,
     title:
       legacyProject.id === 'demo-project' ? importedDemoProjectTitle : `Imported ${legacyProject.title}`,
     description: 'Imported from legacy scene workspace.',
@@ -281,7 +370,8 @@ const createImportedProjectFromLegacy = (
     updatedAt: importedAt,
     stats: createDefaultProjectStats(),
     settings: createDefaultProjectSettings(),
-    sceneOrder: [],
+    chapterOrder: [defaultChapter.id],
+    chapters: { [defaultChapter.id]: defaultChapter },
     scenes: {},
   });
 

@@ -16,6 +16,8 @@ import {
   type SessionViewStateSetter,
 } from './use-writing-session-runtime';
 
+const TICK_INTERVAL_MS = 1000;
+
 type UseWritingSessionInput = {
   projectId: string;
   service: WritingSessionService;
@@ -27,7 +29,7 @@ export type UseWritingSessionResult = {
   elapsedSeconds: number;
   error: string | null;
   startSession: () => void;
-  stopSession: (wordsWritten: number) => Promise<void>;
+  stopSession: () => Promise<void>;
   setDailyGoal: (goal: number | null) => void;
   onWordsSaved: (delta: number) => void;
 };
@@ -74,15 +76,16 @@ function useStartStop(
       assignSessionRef(runtimeRefs.intervalRef, setInterval(() => {
         if (!runtimeRefs.isMountedRef.current) return;
         patchViewState({ elapsedSeconds: incrementSessionRef(runtimeRefs.elapsedSecondsRef) });
-      }, 1000));
+      }, TICK_INTERVAL_MS));
     } catch {
       patchViewState({ error: 'Failed to start writing session.' });
     }
-  }, [input, patchViewState, runtimeRefs]);
+  }, [input.projectId, input.service, patchViewState, runtimeRefs]);
 
-  const stopSession = useCallback(async (wordsWritten: number): Promise<void> => {
+  const stopSession = useCallback(async (): Promise<void> => {
     const sessionId = runtimeRefs.sessionIdRef.current;
     if (!sessionId) return;
+    const wordsWritten = runtimeRefs.wordsDeltaRef.current;
     clearSessionInterval(runtimeRefs.intervalRef);
     assignSessionRef(runtimeRefs.sessionIdRef, null);
     assignSessionRef(runtimeRefs.wordsDeltaRef, 0);
@@ -93,7 +96,7 @@ function useStartStop(
     } catch {
       patchViewState({ isRunning: false, elapsedSeconds: 0, error: 'Failed to save writing session.' });
     }
-  }, [input, patchViewState, runtimeRefs]);
+  }, [input.projectId, input.service, patchViewState, runtimeRefs]);
 
   return { startSession, stopSession };
 }
@@ -111,7 +114,7 @@ function useGoalAndWords(
     } catch {
       patchViewState({ error: 'Failed to update daily goal.' });
     }
-  }, [input, loadDashboard, patchViewState]);
+  }, [input.projectId, input.service, loadDashboard, patchViewState]);
 
   const onWordsSaved = useCallback((delta: number): void => {
     if (!runtimeRefs.sessionIdRef.current) return;

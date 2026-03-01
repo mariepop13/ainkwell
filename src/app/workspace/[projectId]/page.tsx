@@ -5,13 +5,15 @@ import { useParams } from 'next/navigation';
 import type { Dispatch, ReactElement, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { createChapterService } from '@/application/project/chapter-service';
 import { createProjectService } from '@/application/project/project-service';
 import type { ProjectService } from '@/application/project/project-service';
 import { SceneEditorService } from '@/application/scene/scene-editor-service';
-import { SceneStatusBadge } from '@/components/scene/scene-status-badge';
+import { ChapterOutlinePanel } from '@/components/workspace/chapter-outline-panel';
+import { ChapterForm } from '@/components/workspace/chapter-form';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { projectIdSchema } from '@/domain/project/schemas';
-import type { WritingProject } from '@/domain/project/types';
+import type { ChapterSummary, WritingProject } from '@/domain/project/types';
 import { formatProjectDate } from '@/lib/utils';
 
 type DetailState = 'loading' | 'not-found' | 'ready' | 'error';
@@ -23,18 +25,44 @@ type ProjectDetailResult = {
   reload: () => Promise<void>;
 };
 
-type SceneActions = {
-  isCreatingScene: boolean;
-  sceneActionError: string | null;
-  createScene: () => Promise<void>;
-};
-
 type ProjectLoadHandlers = {
   start: () => void;
   applyReady: (project: WritingProject) => void;
   applyNotFound: () => void;
   applyError: (error: unknown) => void;
   shouldApply: () => boolean;
+};
+
+type ChapterActions = {
+  isCreatingChapter: boolean;
+  showCreateChapterForm: boolean;
+  chapterActionError: string | null;
+  chapters: ChapterSummary[];
+  openCreateChapterForm: () => void;
+  closeCreateChapterForm: () => void;
+  createChapter: (title: string) => Promise<void>;
+  renameChapter: (chapterId: string, title: string) => Promise<void>;
+  deleteChapter: (chapterId: string) => Promise<void>;
+  reorderChapter: (chapterId: string, direction: 'up' | 'down') => Promise<void>;
+  moveSceneToChapter: (sceneId: string, targetChapterId: string) => Promise<void>;
+  createScene: (chapterId: string, title: string) => Promise<void>;
+};
+
+const deriveChapterSummaries = (project: WritingProject | null): ChapterSummary[] => {
+  if (!project) {
+    return [];
+  }
+
+  return project.chapterOrder.map((chapterId) => {
+    const chapter = project.chapters[chapterId];
+    return {
+      id: chapterId,
+      projectId: project.id,
+      title: chapter?.title ?? '',
+      sceneCount: chapter?.sceneOrder.length ?? 0,
+      wordCount: chapter?.wordCount ?? 0,
+    };
+  });
 };
 
 const getProjectIdParam = (input: string | string[] | undefined): string => {
@@ -52,8 +80,6 @@ const toErrorMessage = (error: unknown, fallbackMessage: string): string => {
 
   return fallbackMessage;
 };
-
-const getNextSceneTitle = (project: WritingProject): string => `Scene ${project.sceneOrder.length + 1}`;
 
 const loadProjectDetail = async (
   projectId: string,
@@ -160,6 +186,132 @@ function useProjectDetail(projectId: string | null, service: ProjectService): Pr
   return { state, errorMessage, project, reload };
 }
 
+function useChapterActions(
+  projectId: string | null,
+  project: WritingProject | null,
+  repository: LocalProjectRepository,
+  reload: () => Promise<void>,
+): ChapterActions {
+  const chapterService = useMemo(() => createChapterService(repository), [repository]);
+  const sceneService = useMemo(() => new SceneEditorService(repository), [repository]);
+
+  const [isCreatingChapter, setIsCreatingChapter] = useState(false);
+  const [showCreateChapterForm, setShowCreateChapterForm] = useState(false);
+  const [chapterActionError, setChapterActionError] = useState<string | null>(null);
+
+  const chapters = deriveChapterSummaries(project);
+
+  const runChapterAction = useCallback(
+    async (action: () => Promise<unknown>): Promise<boolean> => {
+      setChapterActionError(null);
+      try {
+        await action();
+        await reload();
+        return true;
+      } catch (error) {
+        setChapterActionError(toErrorMessage(error, 'Chapter action failed.'));
+        return false;
+      }
+    },
+    [reload],
+  );
+
+  const createChapter = useCallback(
+    async (title: string): Promise<void> => {
+      if (!projectId) {
+        return;
+      }
+
+      setIsCreatingChapter(true);
+      try {
+        const success = await runChapterAction(() => chapterService.createChapter({ projectId, title }));
+        if (success) {
+          setShowCreateChapterForm(false);
+        }
+      } finally {
+        setIsCreatingChapter(false);
+      }
+    },
+    [chapterService, projectId, runChapterAction],
+  );
+
+  const renameChapter = useCallback(
+    async (chapterId: string, title: string): Promise<void> => {
+      if (!projectId) {
+        return;
+      }
+
+      await runChapterAction(() => chapterService.renameChapter({ projectId, chapterId, title }));
+    },
+    [chapterService, projectId, runChapterAction],
+  );
+
+  const deleteChapter = useCallback(
+    async (chapterId: string): Promise<void> => {
+      if (!projectId) {
+        return;
+      }
+
+      await runChapterAction(() => chapterService.deleteChapter({ projectId, chapterId }));
+    },
+    [chapterService, projectId, runChapterAction],
+  );
+
+  const reorderChapter = useCallback(
+    async (chapterId: string, direction: 'up' | 'down'): Promise<void> => {
+      if (!projectId) {
+        return;
+      }
+
+      await runChapterAction(() =>
+        chapterService.reorderChapter({ projectId, chapterId, direction }),
+      );
+    },
+    [chapterService, projectId, runChapterAction],
+  );
+
+  const moveSceneToChapter = useCallback(
+    async (sceneId: string, targetChapterId: string): Promise<void> => {
+      if (!projectId) {
+        return;
+      }
+
+      await runChapterAction(() =>
+        chapterService.moveSceneToChapter({ projectId, sceneId, targetChapterId }),
+      );
+    },
+    [chapterService, projectId, runChapterAction],
+  );
+
+  const createScene = useCallback(
+    async (chapterId: string, title: string): Promise<void> => {
+      if (!projectId) {
+        return;
+      }
+
+      await runChapterAction(() =>
+        sceneService.createScene({ projectId, title, chapterId }),
+      );
+    },
+    [projectId, runChapterAction, sceneService],
+  );
+
+  return {
+    isCreatingChapter,
+    showCreateChapterForm,
+    chapterActionError,
+    chapters,
+    openCreateChapterForm: () => { setShowCreateChapterForm(true); },
+    closeCreateChapterForm: () => { setShowCreateChapterForm(false); },
+    createChapter,
+    renameChapter,
+    deleteChapter,
+    reorderChapter,
+    moveSceneToChapter,
+    createScene,
+  };
+}
+
 function CenteredMessage({
   title,
   description,
@@ -195,66 +347,47 @@ function ProjectStats({ project }: { project: WritingProject }): ReactElement {
   );
 }
 
-function SceneList({ projectId, project }: { projectId: string; project: WritingProject }): ReactElement {
-  const orderedScenes = project.sceneOrder
-    .map((sceneId) => project.scenes[sceneId])
-    .filter((scene): scene is NonNullable<typeof scene> => Boolean(scene));
-
-  if (orderedScenes.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        No scenes yet. Create your first scene.
-      </p>
-    );
-  }
-
-  return (
-    <ul className="space-y-3">
-      {orderedScenes.map((scene) => (
-        <li key={scene.id} className="rounded-lg border p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <h3 className="text-lg font-headline font-semibold">{scene.title}</h3>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <SceneStatusBadge status={scene.status} />
-                <span>Updated: {formatProjectDate(scene.updatedAt)}</span>
-              </div>
-            </div>
-            <Link
-              href={`/workspace/${projectId}/scene/${scene.id}`}
-              className="inline-flex rounded-md border px-3 py-2 text-sm font-medium"
-            >
-              Open
-            </Link>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ProjectScenesSection({ projectId, project, actions }: {
+function ChaptersSection({
+  projectId,
+  project,
+  chapterActions,
+}: {
   project: WritingProject;
   projectId: string;
-  actions: SceneActions;
+  chapterActions: ChapterActions;
 }): ReactElement {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-headline font-semibold">Scenes</h2>
+        <h2 className="text-2xl font-headline font-semibold">Chapters</h2>
         <button
           type="button"
-          onClick={() => {
-            void actions.createScene();
-          }}
-          disabled={actions.isCreatingScene}
-          className="inline-flex rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={chapterActions.openCreateChapterForm}
+          className="inline-flex rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
         >
-          {actions.isCreatingScene ? 'Creating...' : 'Create scene'}
+          Add Chapter
         </button>
       </div>
-      {actions.sceneActionError ? <p className="text-sm text-destructive">{actions.sceneActionError}</p> : null}
-      <SceneList projectId={projectId} project={project} />
+      {chapterActions.showCreateChapterForm ? (
+        <ChapterForm
+          submitLabel="Create"
+          onSubmit={chapterActions.createChapter}
+          onCancel={chapterActions.closeCreateChapterForm}
+        />
+      ) : null}
+      <ChapterOutlinePanel
+        projectId={projectId}
+        project={project}
+        chapters={chapterActions.chapters}
+        actions={{
+          createScene: chapterActions.createScene,
+          renameChapter: chapterActions.renameChapter,
+          deleteChapter: chapterActions.deleteChapter,
+          reorderChapter: chapterActions.reorderChapter,
+          moveSceneToChapter: chapterActions.moveSceneToChapter,
+        }}
+        actionError={chapterActions.chapterActionError}
+      />
     </section>
   );
 }
@@ -300,11 +433,11 @@ function ProjectWritingGoalsSection({ projectId }: { projectId: string }): React
 function ProjectDetailView({
   project,
   projectId,
-  actions,
+  chapterActions,
 }: {
   project: WritingProject;
   projectId: string;
-  actions: SceneActions;
+  chapterActions: ChapterActions;
 }): ReactElement {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-10">
@@ -317,7 +450,7 @@ function ProjectDetailView({
       </header>
 
       <ProjectStats project={project} />
-      <ProjectScenesSection projectId={projectId} project={project} actions={actions} />
+      <ChaptersSection projectId={projectId} project={project} chapterActions={chapterActions} />
       <ProjectStoryBibleSection projectId={projectId} />
       <ProjectWritingGoalsSection projectId={projectId} />
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
@@ -330,11 +463,11 @@ function ProjectDetailView({
 function ProjectPageState({
   projectId,
   detail,
-  actions,
+  chapterActions,
 }: {
   projectId: string | null;
   detail: ProjectDetailResult;
-  actions: SceneActions;
+  chapterActions: ChapterActions;
 }): ReactElement {
   if (!projectId) {
     return renderInvalidProjectIdState();
@@ -356,7 +489,13 @@ function ProjectPageState({
     return renderUnavailableProjectState();
   }
 
-  return <ProjectDetailView project={detail.project} projectId={projectId} actions={actions} />;
+  return (
+    <ProjectDetailView
+      project={detail.project}
+      projectId={projectId}
+      chapterActions={chapterActions}
+    />
+  );
 }
 
 function renderInvalidProjectIdState(): ReactElement {
@@ -407,41 +546,15 @@ export default function WorkspaceProjectPage(): ReactElement {
   const projectId = useProjectIdParam();
   const repository = useMemo(() => new LocalProjectRepository(), []);
   const projectService = useMemo(() => createProjectService(repository), [repository]);
-  const sceneService = useMemo(() => new SceneEditorService(repository), [repository]);
 
-  const [isCreatingScene, setIsCreatingScene] = useState<boolean>(false);
-  const [sceneActionError, setSceneActionError] = useState<string | null>(null);
   const detail = useProjectDetail(projectId, projectService);
-
-  const createScene = useCallback(async (): Promise<void> => {
-    if (!projectId || !detail.project) {
-      return;
-    }
-
-    setSceneActionError(null);
-    setIsCreatingScene(true);
-    try {
-      await sceneService.createScene({
-        projectId,
-        title: getNextSceneTitle(detail.project),
-      });
-      await detail.reload();
-    } catch (error) {
-      setSceneActionError(sceneService.toUserErrorMessage(error));
-    } finally {
-      setIsCreatingScene(false);
-    }
-  }, [detail, projectId, sceneService]);
+  const chapterActions = useChapterActions(projectId, detail.project, repository, detail.reload);
 
   return (
     <ProjectPageState
       projectId={projectId}
       detail={detail}
-      actions={{
-        isCreatingScene,
-        sceneActionError,
-        createScene,
-      }}
+      chapterActions={chapterActions}
     />
   );
 }

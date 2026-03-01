@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactElement } from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
@@ -72,19 +72,11 @@ function DashboardPanels({ dashboard }: { dashboard: SessionDashboard }): ReactE
 export function GoalsPageClient({ projectId, projectTitle }: GoalsPageClientProps): ReactElement {
   const repository = useMemo(() => new LocalWritingSessionRepository(), []);
   const service = useMemo(() => new WritingSessionService(repository), [repository]);
-  const [sessionWords, setSessionWords] = useState<number>(0);
-
   const { dashboard, isRunning, elapsedSeconds, error, startSession, stopSession, setDailyGoal } =
     useWritingSession({ projectId, service });
 
-  const handleStart = (): void => {
-    setSessionWords(0);
-    startSession();
-  };
-
   const handleStop = async (): Promise<void> => {
-    await stopSession(sessionWords);
-    setSessionWords(0);
+    await stopSession();
   };
 
   return (
@@ -92,7 +84,7 @@ export function GoalsPageClient({ projectId, projectTitle }: GoalsPageClientProp
       <GoalsPageHeader projectId={projectId} projectTitle={projectTitle} />
       {error ? <p className="rounded-lg border border-destructive p-3 text-sm text-destructive">{error}</p> : null}
       <DailyGoalForm currentGoal={dashboard?.dailyGoal ?? null} onSave={setDailyGoal} />
-      <SessionTimer isRunning={isRunning} elapsedSeconds={elapsedSeconds} onStart={handleStart} onStop={handleStop} />
+      <SessionTimer isRunning={isRunning} elapsedSeconds={elapsedSeconds} onStart={startSession} onStop={handleStop} />
       {dashboard ? <DashboardPanels dashboard={dashboard} /> : (
         <div className="flex items-center justify-center py-10">
           <p className="text-sm text-muted-foreground">Loading writing goals...</p>
