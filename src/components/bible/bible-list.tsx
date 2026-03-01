@@ -1,14 +1,19 @@
 import type { ChangeEvent, ReactElement } from 'react';
 import type { BibleEntity, BibleEntityCategory } from '@/domain/bible/types';
 import { BIBLE_ENTITY_CATEGORIES } from '@/domain/bible/types';
+import { TagChip } from '@/components/bible/tag-chip';
+import { TagFilterPanel } from '@/components/bible/tag-filter-panel';
 
 interface BibleListProps {
   entities: BibleEntity[];
   selectedEntityId: string | null;
   searchValue: string;
   categoryFilter: BibleEntityCategory | 'all';
+  allTags: string[];
+  activeTagFilter: string[];
   onSearchChange: (value: string) => void;
   onCategoryFilterChange: (value: BibleEntityCategory | 'all') => void;
+  onTagFilterChange: (tags: string[]) => void;
   onSelectEntity: (entityId: string) => void;
   onCreateEntity: () => void;
 }
@@ -80,16 +85,26 @@ function BibleCategoryField({
 function BibleListFilters({
   searchValue,
   categoryFilter,
+  allTags,
+  activeTagFilter,
   onSearchChange,
   onCategoryFilterChange,
-}: Pick<BibleListProps, 'searchValue' | 'categoryFilter' | 'onSearchChange' | 'onCategoryFilterChange'>): ReactElement {
+  onTagFilterChange,
+}: Pick<
+  BibleListProps,
+  | 'searchValue'
+  | 'categoryFilter'
+  | 'allTags'
+  | 'activeTagFilter'
+  | 'onSearchChange'
+  | 'onCategoryFilterChange'
+  | 'onTagFilterChange'
+>): ReactElement {
   return (
     <>
       <BibleSearchField searchValue={searchValue} onSearchChange={onSearchChange} />
-      <BibleCategoryField
-        categoryFilter={categoryFilter}
-        onCategoryFilterChange={onCategoryFilterChange}
-      />
+      <BibleCategoryField categoryFilter={categoryFilter} onCategoryFilterChange={onCategoryFilterChange} />
+      <TagFilterPanel allTags={allTags} activeTagFilter={activeTagFilter} onTagFilterChange={onTagFilterChange} />
     </>
   );
 }
@@ -113,6 +128,13 @@ function BibleEntityItems({
             >
               <p className="font-semibold">{entity.name}</p>
               <p className="text-xs text-muted-foreground">{entity.category}</p>
+              {entity.tags.length > 0 ? (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {entity.tags.map((tag) => (
+                    <TagChip key={tag} label={tag} />
+                  ))}
+                </div>
+              ) : null}
             </button>
           </li>
         ))}
@@ -128,8 +150,11 @@ export function BibleList(props: BibleListProps): ReactElement {
       <BibleListFilters
         searchValue={props.searchValue}
         categoryFilter={props.categoryFilter}
+        allTags={props.allTags}
+        activeTagFilter={props.activeTagFilter}
         onSearchChange={props.onSearchChange}
         onCategoryFilterChange={props.onCategoryFilterChange}
+        onTagFilterChange={props.onTagFilterChange}
       />
       <button
         type="button"

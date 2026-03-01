@@ -178,3 +178,115 @@ describe('LocalBibleRepository and BibleService', () => {
     expect(entities[0].name).toBe('The Tidebound');
   });
 });
+
+describe('tag filtering', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('filters entities that match a single active tag', () => {
+    const service = createService();
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'Hero', tags: ['protagonist'] });
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'Villain', tags: ['antagonist'] });
+
+    const result = service.listEntities(PROJECT_A, { tags: ['protagonist'] });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('Hero');
+  });
+
+  it('filters entities with AND semantics when multiple tags are active', () => {
+    const service = createService();
+    service.saveEntity({
+      projectId: PROJECT_A,
+      category: 'character',
+      name: 'Hero',
+      tags: ['protagonist', 'chapter-1'],
+    });
+    service.saveEntity({
+      projectId: PROJECT_A,
+      category: 'character',
+      name: 'Sidekick',
+      tags: ['protagonist'],
+    });
+
+    const result = service.listEntities(PROJECT_A, { tags: ['protagonist', 'chapter-1'] });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('Hero');
+  });
+
+  it('returns all entities when tagFilter is empty array', () => {
+    const service = createService();
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'A', tags: ['tag-a'] });
+    service.saveEntity({ projectId: PROJECT_A, category: 'location', name: 'B', tags: ['tag-b'] });
+
+    const result = service.listEntities(PROJECT_A, { tags: [] });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('returns all entities when tagFilter is undefined', () => {
+    const service = createService();
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'A', tags: ['tag-a'] });
+    service.saveEntity({ projectId: PROJECT_A, category: 'location', name: 'B' });
+
+    const result = service.listEntities(PROJECT_A, {});
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('excludes entities missing any one of the required tags', () => {
+    const service = createService();
+    service.saveEntity({
+      projectId: PROJECT_A,
+      category: 'character',
+      name: 'Partial',
+      tags: ['protagonist'],
+    });
+
+    const result = service.listEntities(PROJECT_A, { tags: ['protagonist', 'chapter-1'] });
+
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe('listAllTags', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('returns an empty array when no entities exist', () => {
+    const service = createService();
+
+    expect(service.listAllTags(PROJECT_A)).toEqual([]);
+  });
+
+  it('returns a sorted deduplicated list of all tags across entities', () => {
+    const service = createService();
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'A', tags: ['zebra', 'alpha'] });
+    service.saveEntity({ projectId: PROJECT_A, category: 'location', name: 'B', tags: ['alpha', 'beta'] });
+
+    expect(service.listAllTags(PROJECT_A)).toEqual(['alpha', 'beta', 'zebra']);
+  });
+
+  it('includes tags only from the specified project', () => {
+    const service = createService();
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'A', tags: ['tag-a'] });
+    service.saveEntity({ projectId: PROJECT_B, category: 'character', name: 'B', tags: ['tag-b'] });
+
+    expect(service.listAllTags(PROJECT_A)).toEqual(['tag-a']);
+    expect(service.listAllTags(PROJECT_B)).toEqual(['tag-b']);
+  });
+
+  it('reflects newly added tags after upsert', () => {
+    const service = createService();
+    service.saveEntity({ projectId: PROJECT_A, category: 'character', name: 'A', tags: ['existing'] });
+
+    expect(service.listAllTags(PROJECT_A)).toEqual(['existing']);
+
+    service.saveEntity({ projectId: PROJECT_A, category: 'location', name: 'B', tags: ['new-tag'] });
+
+    expect(service.listAllTags(PROJECT_A)).toEqual(['existing', 'new-tag']);
+  });
+});

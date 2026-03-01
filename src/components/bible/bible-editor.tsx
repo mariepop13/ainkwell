@@ -3,11 +3,13 @@
 import { type FormEvent, type ReactElement, useState } from 'react';
 import { BIBLE_ENTITY_CATEGORIES } from '@/domain/bible/types';
 import type { BibleEntity, BibleEntityCategory, SaveBibleEntityInput } from '@/domain/bible/types';
+import { TagsInput } from '@/components/bible/tags-input';
 
 interface BibleEditorProps {
   projectId: string;
   selectedEntity: BibleEntity | null;
   errorMessage: string | null;
+  suggestedTags?: string[];
   onSave: (input: SaveBibleEntityInput) => void | Promise<void>;
   onDelete: (entityId: string) => void | Promise<void>;
 }
@@ -17,33 +19,22 @@ interface EntityFormState {
   name: string;
   summary: string;
   details: string;
-  tagsInputValue: string;
+  tags: string[];
 }
 
 interface EntityFormProps {
   state: EntityFormState;
+  suggestedTags: string[];
   onCategoryChange: (value: BibleEntityCategory) => void;
   onNameChange: (value: string) => void;
   onSummaryChange: (value: string) => void;
   onDetailsChange: (value: string) => void;
-  onTagsInputValueChange: (value: string) => void;
+  onTagsChange: (value: string[]) => void;
 }
 
 interface EditorActionsHandlers {
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
   handleDelete: () => void;
-}
-
-function toTagInputValue(tags: string[]): string {
-  return tags.join(', ');
-}
-
-function parseTagInputValue(value: string): string[] {
-  const tags = value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-  return Array.from(new Set(tags));
 }
 
 function getInitialFormState(selectedEntity: BibleEntity | null): EntityFormState {
@@ -53,7 +44,7 @@ function getInitialFormState(selectedEntity: BibleEntity | null): EntityFormStat
       name: '',
       summary: '',
       details: '',
-      tagsInputValue: '',
+      tags: [],
     };
   }
 
@@ -62,7 +53,7 @@ function getInitialFormState(selectedEntity: BibleEntity | null): EntityFormStat
     name: selectedEntity.name,
     summary: selectedEntity.summary,
     details: selectedEntity.details,
-    tagsInputValue: toTagInputValue(selectedEntity.tags),
+    tags: selectedEntity.tags,
   };
 }
 
@@ -72,22 +63,22 @@ function useEntityFormState(selectedEntity: BibleEntity | null): {
   setName: (value: string) => void;
   setSummary: (value: string) => void;
   setDetails: (value: string) => void;
-  setTagsInputValue: (value: string) => void;
+  setTags: (value: string[]) => void;
 } {
   const initialFormState = getInitialFormState(selectedEntity);
   const [category, setCategory] = useState<BibleEntityCategory>(initialFormState.category);
   const [name, setName] = useState(initialFormState.name);
   const [summary, setSummary] = useState(initialFormState.summary);
   const [details, setDetails] = useState(initialFormState.details);
-  const [tagsInputValue, setTagsInputValue] = useState(initialFormState.tagsInputValue);
+  const [tags, setTags] = useState<string[]>(initialFormState.tags);
 
   return {
-    state: { category, name, summary, details, tagsInputValue },
+    state: { category, name, summary, details, tags },
     setCategory,
     setName,
     setSummary,
     setDetails,
-    setTagsInputValue,
+    setTags,
   };
 }
 
@@ -105,11 +96,12 @@ function EditorError({ message }: { message: string | null }): ReactElement | nu
 
 function EntityFormFields({
   state,
+  suggestedTags,
   onCategoryChange,
   onNameChange,
   onSummaryChange,
   onDetailsChange,
-  onTagsInputValueChange,
+  onTagsChange,
 }: EntityFormProps): ReactElement {
   return (
     <>
@@ -117,7 +109,7 @@ function EntityFormFields({
       <CategoryField value={state.category} onChange={onCategoryChange} />
       <SummaryField value={state.summary} onChange={onSummaryChange} />
       <DetailsField value={state.details} onChange={onDetailsChange} />
-      <TagsField value={state.tagsInputValue} onChange={onTagsInputValueChange} />
+      <TagsInput tags={state.tags} suggestedTags={suggestedTags} onTagsChange={onTagsChange} />
     </>
   );
 }
@@ -202,23 +194,6 @@ function DetailsField({ value, onChange }: { value: string; onChange: (value: st
   );
 }
 
-function TagsField({ value, onChange }: { value: string; onChange: (value: string) => void }): ReactElement {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-semibold" htmlFor="entity-tags">
-        Tags
-      </label>
-      <input
-        id="entity-tags"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-        placeholder="comma, separated, tags"
-      />
-    </div>
-  );
-}
-
 function EditorActions({
   selectedEntity,
   onDelete,
@@ -266,7 +241,7 @@ function useEditorActions({
       name: state.name,
       summary: state.summary,
       details: state.details,
-      tags: parseTagInputValue(state.tagsInputValue),
+      tags: state.tags,
     });
   };
 
@@ -284,11 +259,11 @@ export function BibleEditor({
   projectId,
   selectedEntity,
   errorMessage,
+  suggestedTags = [],
   onSave,
   onDelete,
 }: BibleEditorProps): ReactElement {
-  const { state, setCategory, setName, setSummary, setDetails, setTagsInputValue } =
-    useEntityFormState(selectedEntity);
+  const { state, setCategory, setName, setSummary, setDetails, setTags } = useEntityFormState(selectedEntity);
   const { handleSubmit, handleDelete } = useEditorActions({
     projectId,
     selectedEntity,
@@ -304,11 +279,12 @@ export function BibleEditor({
       <form className="space-y-3" onSubmit={handleSubmit}>
         <EntityFormFields
           state={state}
+          suggestedTags={suggestedTags}
           onCategoryChange={setCategory}
           onNameChange={setName}
           onSummaryChange={setSummary}
           onDetailsChange={setDetails}
-          onTagsInputValueChange={setTagsInputValue}
+          onTagsChange={setTags}
         />
         <EditorActions selectedEntity={selectedEntity} onDelete={handleDelete} />
       </form>
