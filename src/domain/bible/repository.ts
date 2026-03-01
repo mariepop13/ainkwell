@@ -19,6 +19,7 @@ export interface BibleRepository {
   listSceneLinks(projectId: string, filters?: BibleSceneLinkFilters): BibleSceneLink[];
   upsertSceneLink(sceneLink: BibleSceneLink): BibleSceneLink;
   deleteSceneLink(projectId: string, sceneLinkId: string): void;
+  listAllTags(projectId: string): string[];
   listScenes(projectId: string): ProjectScene[];
   upsertScene(scene: ProjectScene): ProjectScene;
   bulkSeedScenes(projectId: string, scenes: ProjectScene[]): ProjectScene[];

@@ -94,3 +94,116 @@ describe('BiblePage', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('BiblePage tag filtering and TagsInput', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('renders tag chips in the filter panel when entities with tags exist', async () => {
+    const user = userEvent.setup();
+    const projectRepository = new LocalProjectRepository();
+    const project = await projectRepository.create({ title: 'Tag Filter Test', description: '' });
+    render(<BiblePageClient projectId={project.id} />);
+
+    const nameInput = await screen.findByLabelText('Name');
+    await user.type(nameInput, 'Aria');
+    const tagsInput = screen.getByLabelText('Tags');
+    await user.type(tagsInput, 'protagonist');
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await screen.findByRole('button', { name: /Aria/i });
+
+    expect(screen.getByRole('button', { name: 'protagonist' })).toBeInTheDocument();
+  });
+
+  it('filters the entity list when a tag chip is clicked', async () => {
+    const user = userEvent.setup();
+    const projectRepository = new LocalProjectRepository();
+    const project = await projectRepository.create({ title: 'Tag Filter Test 2', description: '' });
+    render(<BiblePageClient projectId={project.id} />);
+
+    const nameInput = await screen.findByLabelText('Name');
+    await user.type(nameInput, 'Aria');
+    const tagsInput = screen.getByLabelText('Tags');
+    await user.type(tagsInput, 'protagonist');
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await screen.findByRole('button', { name: /Aria/i });
+
+    await user.click(screen.getByRole('button', { name: 'New entity' }));
+    const secondNameInput = screen.getByLabelText('Name');
+    await user.clear(secondNameInput);
+    await user.type(secondNameInput, 'Citadel');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await screen.findByRole('button', { name: /Citadel/i });
+
+    await user.click(screen.getByRole('button', { name: 'protagonist' }));
+
+    expect(screen.getByRole('button', { name: /Aria/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Citadel/i })).not.toBeInTheDocument();
+  });
+
+  it('clears the tag filter when "Clear tags" is clicked', async () => {
+    const user = userEvent.setup();
+    const projectRepository = new LocalProjectRepository();
+    const project = await projectRepository.create({ title: 'Tag Filter Test 3', description: '' });
+    render(<BiblePageClient projectId={project.id} />);
+
+    const nameInput = await screen.findByLabelText('Name');
+    await user.type(nameInput, 'Aria');
+    const tagsInput = screen.getByLabelText('Tags');
+    await user.type(tagsInput, 'protagonist');
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await screen.findByRole('button', { name: /Aria/i });
+
+    await user.click(screen.getByRole('button', { name: 'New entity' }));
+    const secondNameInput = screen.getByLabelText('Name');
+    await user.clear(secondNameInput);
+    await user.type(secondNameInput, 'Citadel');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await screen.findByRole('button', { name: /Citadel/i });
+
+    await user.click(screen.getByRole('button', { name: 'protagonist' }));
+    expect(screen.queryByRole('button', { name: /Citadel/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Clear tags' }));
+
+    expect(screen.getByRole('button', { name: /Aria/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Citadel/i })).toBeInTheDocument();
+  });
+
+  it('adds a tag chip in BibleEditor when Enter is pressed', async () => {
+    const user = userEvent.setup();
+    const projectRepository = new LocalProjectRepository();
+    const project = await projectRepository.create({ title: 'Tags Input Test', description: '' });
+    render(<BiblePageClient projectId={project.id} />);
+
+    const nameInput = await screen.findByLabelText('Name');
+    await user.type(nameInput, 'Aria');
+    const tagsInput = screen.getByLabelText('Tags');
+    await user.type(tagsInput, 'hero');
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByRole('button', { name: 'Remove tag hero' })).toBeInTheDocument();
+  });
+
+  it('removes a tag chip when its x button is clicked', async () => {
+    const user = userEvent.setup();
+    const projectRepository = new LocalProjectRepository();
+    const project = await projectRepository.create({ title: 'Tags Remove Test', description: '' });
+    render(<BiblePageClient projectId={project.id} />);
+
+    const nameInput = await screen.findByLabelText('Name');
+    await user.type(nameInput, 'Aria');
+    const tagsInput = screen.getByLabelText('Tags');
+    await user.type(tagsInput, 'hero');
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Remove tag hero' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Remove tag hero' }));
+
+    expect(screen.queryByRole('button', { name: 'Remove tag hero' })).not.toBeInTheDocument();
+  });
+});
