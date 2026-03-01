@@ -52,6 +52,8 @@ type SaveSuccessInput = {
   requestId: number;
   payload: SavePayload;
   savedScene: Scene;
+  wordsDelta?: number;
+  onWordsSaved?: (delta: number) => void;
 };
 
 type SaveFailureInput = {
@@ -179,7 +181,7 @@ export const createSavePayload = (runtimeRefs: SceneRuntimeRefs): SavePayload | 
 };
 
 export const applySaveSuccess = (input: SaveSuccessInput): void => {
-  const { runtimeRefs, patchViewState, requestId, payload, savedScene } = input;
+  const { runtimeRefs, patchViewState, requestId, payload, savedScene, wordsDelta, onWordsSaved } = input;
   if (!runtimeRefs.isMountedRef.current || requestId < runtimeRefs.latestAppliedRequestRef.current) {
     return;
   }
@@ -198,6 +200,10 @@ export const applySaveSuccess = (input: SaveSuccessInput): void => {
 
   if (!payloadStillCurrent) {
     return;
+  }
+
+  if (onWordsSaved && wordsDelta !== undefined && wordsDelta !== 0) {
+    onWordsSaved(wordsDelta);
   }
 
   assignRef(runtimeRefs.isDirtyRef, false);
