@@ -7,6 +7,7 @@ import type {
   RelationshipType,
   SaveBibleRelationshipInput,
 } from '@/domain/bible/types';
+import { resolveIdInList } from '@/components/bible/bible-editor-utils';
 
 interface RelationshipFormState {
   fromEntityId: string;
@@ -74,19 +75,6 @@ function getVisibleRelationships(
   );
 }
 
-function resolveFromEntityId(
-  candidateFromEntityId: string,
-  selectedEntityId: string | null,
-  entities: BibleEntity[],
-): string {
-  const entityIds = new Set(entities.map((entity) => entity.id));
-  if (entityIds.has(candidateFromEntityId)) {
-    return candidateFromEntityId;
-  }
-
-  return selectedEntityId ?? entities[0]?.id ?? '';
-}
-
 function resolveToEntityId(
   candidateToEntityId: string,
   fromEntityId: string,
@@ -149,7 +137,7 @@ export function useRelationshipEditorState({
     [relationships, selectedEntityId],
   );
   const resolvedFromEntityId = useMemo(
-    () => resolveFromEntityId(formState.state.fromEntityId, selectedEntityId, entities),
+    () => resolveIdInList(formState.state.fromEntityId, entities, selectedEntityId),
     [entities, formState.state.fromEntityId, selectedEntityId],
   );
   const resolvedToEntityId = useMemo(
