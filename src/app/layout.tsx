@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
 import { Inter, Lora, Playfair_Display } from 'next/font/google';
+import Script from 'next/script';
 import { ThemeToggle } from '@/components/theme-toggle';
 import './globals.css';
 
@@ -37,10 +38,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${playfairDisplay.variable} ${lora.variable}`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body suppressHydrationWarning className="font-body antialiased">
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         {children}
         <ThemeToggle />
       </body>
