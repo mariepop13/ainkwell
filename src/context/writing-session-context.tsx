@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useMemo, type ReactElement, type ReactNode } from 'react';
+import { createContext, useEffect, useMemo, type ReactElement, type ReactNode } from 'react';
 
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
@@ -18,6 +18,13 @@ export function WritingSessionProvider({
   const repository = useMemo(() => new LocalWritingSessionRepository(), []);
   const service = useMemo(() => new WritingSessionService(repository), [repository]);
   const session = useWritingSession({ projectId, service });
+  const { stopSession } = session;
+
+  useEffect(() => {
+    return () => {
+      void stopSession();
+    };
+  }, [stopSession]);
 
   return (
     <WritingSessionContext.Provider value={session}>
