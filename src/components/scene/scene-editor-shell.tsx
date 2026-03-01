@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactElement } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
 import {
   SceneEditorService,
@@ -10,6 +10,7 @@ import {
 } from '@/application/scene/scene-editor-service';
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
+import { SessionTimer } from '@/components/writing-session/session-timer';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
@@ -154,6 +155,10 @@ function SceneEditorNavigation(props: SceneEditorNavigationProps): ReactElement 
 type SceneEditorLoadedViewProps = {
   projectId: string;
   sceneEditor: UseSceneEditorResult;
+  isSessionRunning: boolean;
+  sessionElapsedSeconds: number;
+  onSessionStart: () => void;
+  onSessionStop: () => Promise<void>;
 };
 
 function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement {
@@ -177,6 +182,13 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
         saveError={props.sceneEditor.saveError}
         onStatusChange={props.sceneEditor.setStatus}
         onRetrySave={props.sceneEditor.retrySave}
+      />
+
+      <SessionTimer
+        isRunning={props.isSessionRunning}
+        elapsedSeconds={props.sessionElapsedSeconds}
+        onStart={props.onSessionStart}
+        onStop={props.onSessionStop}
       />
 
       <section className="flex-1 rounded-xl border bg-card p-4 text-card-foreground">
@@ -211,12 +223,29 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     [props.writingService],
   );
 
+  const sessionWordsRef = useRef(0);
   const writingSession = useWritingSession({ projectId: props.projectId, service: writingService });
+
+  const handleWordsSaved = useCallback((delta: number): void => {
+    sessionWordsRef.current += delta;
+    writingSession.onWordsSaved(delta);
+  }, [writingSession]);
+
+  const handleSessionStart = useCallback((): void => {
+    sessionWordsRef.current = 0;
+    writingSession.startSession();
+  }, [writingSession]);
+
+  const handleSessionStop = useCallback(async (): Promise<void> => {
+    await writingSession.stopSession(sessionWordsRef.current);
+    sessionWordsRef.current = 0;
+  }, [writingSession]);
+
   const sceneEditor = useSceneEditor({
     projectId: props.projectId,
     sceneId: props.sceneId,
     service,
-    onWordsSaved: writingSession.onWordsSaved,
+    onWordsSaved: handleWordsSaved,
   });
   const stateView = getSceneStateView({
     projectId: props.projectId,
@@ -229,5 +258,14 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     return stateView;
   }
 
-  return <SceneEditorLoadedView projectId={props.projectId} sceneEditor={sceneEditor} />;
+  return (
+    <SceneEditorLoadedView
+      projectId={props.projectId}
+      sceneEditor={sceneEditor}
+      isSessionRunning={writingSession.isRunning}
+      sessionElapsedSeconds={writingSession.elapsedSeconds}
+      onSessionStart={handleSessionStart}
+      onSessionStop={handleSessionStop}
+    />
+  );
 }
