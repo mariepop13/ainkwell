@@ -43,6 +43,7 @@ export function ChapterForm({
         value={title}
         onChange={(e) => { setTitle(e.target.value); }}
         placeholder="Chapter title"
+        aria-label="Chapter title"
         maxLength={120}
         required
         autoFocus
