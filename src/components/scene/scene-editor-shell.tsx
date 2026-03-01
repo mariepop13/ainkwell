@@ -8,18 +8,25 @@ import {
   SceneEditorService,
   type SceneEditorServicePort,
 } from '@/application/scene/scene-editor-service';
+import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
+import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
+import { useWritingSession } from '@/hooks/use-writing-session';
 
 type SceneEditorShellProps = {
   projectId: string;
   sceneId: string;
   service?: SceneEditorServicePort;
+  writingService?: WritingSessionService;
 };
 
 const createSceneEditorService = (): SceneEditorServicePort =>
   new SceneEditorService(new LocalProjectRepository());
+
+const createWritingSessionService = (): WritingSessionService =>
+  new WritingSessionService(new LocalWritingSessionRepository());
 
 type SceneStateViewProps = {
   projectId: string;
@@ -199,7 +206,18 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     [props.service],
   );
 
-  const sceneEditor = useSceneEditor({ projectId: props.projectId, sceneId: props.sceneId, service });
+  const writingService = useMemo<WritingSessionService>(
+    () => props.writingService ?? createWritingSessionService(),
+    [props.writingService],
+  );
+
+  const writingSession = useWritingSession({ projectId: props.projectId, service: writingService });
+  const sceneEditor = useSceneEditor({
+    projectId: props.projectId,
+    sceneId: props.sceneId,
+    service,
+    onWordsSaved: writingSession.onWordsSaved,
+  });
   const stateView = getSceneStateView({
     projectId: props.projectId,
     sceneId: props.sceneId,
