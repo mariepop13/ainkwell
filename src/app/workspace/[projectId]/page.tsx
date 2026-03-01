@@ -407,6 +407,25 @@ function ProjectStoryBibleSection({ projectId }: { projectId: string }): ReactEl
   );
 }
 
+function ProjectWritingGoalsSection({ projectId }: { projectId: string }): ReactElement {
+  return (
+    <section className="rounded-lg border p-4">
+      <h2 className="text-2xl font-headline font-semibold">Writing Goals</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Track daily word count goals, writing sessions, streaks, and weekly progress.
+      </p>
+      <div className="mt-3">
+        <Link
+          className="inline-flex rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          href={`/workspace/${projectId}/goals`}
+        >
+          Open Writing Goals
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function ProjectDetailView({
   project,
   projectId,
@@ -429,6 +448,7 @@ function ProjectDetailView({
       <ProjectStats project={project} />
       <ChaptersSection projectId={projectId} project={project} chapterActions={chapterActions} />
       <ProjectStoryBibleSection projectId={projectId} />
+      <ProjectWritingGoalsSection projectId={projectId} />
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
         Back to workspace
       </Link>
