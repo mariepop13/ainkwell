@@ -202,13 +202,15 @@ function useChapterActions(
   const chapters = deriveChapterSummaries(project);
 
   const runChapterAction = useCallback(
-    async (action: () => Promise<unknown>): Promise<void> => {
+    async (action: () => Promise<unknown>): Promise<boolean> => {
       setChapterActionError(null);
       try {
         await action();
         await reload();
+        return true;
       } catch (error) {
         setChapterActionError(toErrorMessage(error, 'Chapter action failed.'));
+        return false;
       }
     },
     [reload],
@@ -222,8 +224,10 @@ function useChapterActions(
 
       setIsCreatingChapter(true);
       try {
-        await runChapterAction(() => chapterService.createChapter({ projectId, title }));
-        setShowCreateChapterForm(false);
+        const success = await runChapterAction(() => chapterService.createChapter({ projectId, title }));
+        if (success) {
+          setShowCreateChapterForm(false);
+        }
       } finally {
         setIsCreatingChapter(false);
       }

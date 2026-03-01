@@ -16,6 +16,7 @@ export function ChapterForm({
 }: ChapterFormProps): ReactElement {
   const [title, setTitle] = useState(initialTitle);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -24,10 +25,13 @@ export function ChapterForm({
       return;
     }
 
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       await onSubmit(trimmedTitle);
       setTitle('');
+    } catch {
+      setSubmitError('Could not save chapter. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -64,6 +68,11 @@ export function ChapterForm({
         >
           Cancel
         </button>
+      ) : null}
+      {submitError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {submitError}
+        </p>
       ) : null}
     </form>
   );
