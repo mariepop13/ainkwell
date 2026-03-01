@@ -55,6 +55,10 @@ export class BibleService {
     return this.repository.listEntities(this.normalizeProjectId(projectId), filters);
   }
 
+  public listAllTags(projectId: string): string[] {
+    return this.repository.listAllTags(this.normalizeProjectId(projectId));
+  }
+
   public getEntity(projectId: string, entityId: string): BibleEntity | null {
     return this.repository.getEntity(this.normalizeProjectId(projectId), entityId);
   }
