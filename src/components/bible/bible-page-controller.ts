@@ -106,6 +106,21 @@ function toBibleErrorMessage(error: unknown): string {
   return readErrorMessage(error, 'Unexpected error while updating the Story Bible');
 }
 
+async function withBibleAction(
+  setError: (message: string | null) => void,
+  action: () => void,
+  rethrow = false,
+): Promise<void> {
+  try {
+    action();
+  } catch (error) {
+    setError(toBibleErrorMessage(error));
+    if (rethrow) {
+      throw error;
+    }
+  }
+}
+
 function getSelectedEntity(entities: BibleDataSnapshot['entities'], selectedEntityId: string | null) {
   if (selectedEntityId) {
     const selectedEntity = entities.find((entity) => entity.id === selectedEntityId);
@@ -294,20 +309,18 @@ function useEntityActions({
   const [error, setError] = useState<string | null>(null);
 
   const saveEntity = async (input: SaveBibleEntityInput): Promise<void> => {
-    try {
+    await withBibleAction(setError, () => {
       runOperation((service, validProjectId) => {
         setError(null);
         const savedEntity = service.saveEntity({ ...input, projectId: validProjectId });
         setSelectedEntityId(savedEntity.id);
         setIsCreatingEntity(false);
       });
-    } catch (nextError) {
-      setError(toBibleErrorMessage(nextError));
-    }
+    });
   };
 
   const deleteEntity = async (entityId: string): Promise<void> => {
-    try {
+    await withBibleAction(setError, () => {
       runOperation((service, validProjectId) => {
         setError(null);
         service.deleteEntity(validProjectId, entityId);
@@ -316,9 +329,7 @@ function useEntityActions({
           setIsCreatingEntity(false);
         }
       });
-    } catch (nextError) {
-      setError(toBibleErrorMessage(nextError));
-    }
+    });
   };
 
   return { error, saveEntity, deleteEntity };
@@ -334,26 +345,21 @@ function useRelationshipActions(
   const [error, setError] = useState<string | null>(null);
 
   const saveRelationship = async (input: SaveBibleRelationshipInput): Promise<void> => {
-    try {
+    await withBibleAction(setError, () => {
       runOperation((service, validProjectId) => {
         setError(null);
         service.saveRelationship({ ...input, projectId: validProjectId });
       });
-    } catch (nextError) {
-      setError(toBibleErrorMessage(nextError));
-      throw nextError;
-    }
+    }, true);
   };
 
   const deleteRelationship = async (relationshipId: string): Promise<void> => {
-    try {
+    await withBibleAction(setError, () => {
       runOperation((service, validProjectId) => {
         setError(null);
         service.deleteRelationship(validProjectId, relationshipId);
       });
-    } catch (nextError) {
-      setError(toBibleErrorMessage(nextError));
-    }
+    });
   };
 
   return { error, saveRelationship, deleteRelationship };
@@ -369,26 +375,21 @@ function useSceneLinkActions(
   const [error, setError] = useState<string | null>(null);
 
   const saveSceneLink = async (input: SaveBibleSceneLinkInput): Promise<void> => {
-    try {
+    await withBibleAction(setError, () => {
       runOperation((service, validProjectId) => {
         setError(null);
         service.saveSceneLink({ ...input, projectId: validProjectId });
       });
-    } catch (nextError) {
-      setError(toBibleErrorMessage(nextError));
-      throw nextError;
-    }
+    }, true);
   };
 
   const deleteSceneLink = async (sceneLinkId: string): Promise<void> => {
-    try {
+    await withBibleAction(setError, () => {
       runOperation((service, validProjectId) => {
         setError(null);
         service.deleteSceneLink(validProjectId, sceneLinkId);
       });
-    } catch (nextError) {
-      setError(toBibleErrorMessage(nextError));
-    }
+    });
   };
 
   return { error, saveSceneLink, deleteSceneLink };
@@ -410,7 +411,7 @@ export function useBiblePageController(projectId: string): BiblePageController {
   });
   const relationshipActions = useRelationshipActions(runOperation);
   const sceneLinkActions = useSceneLinkActions(runOperation);
-  return createControllerState({
+  return {
     projectAccess,
     project,
     bibleService,
@@ -432,9 +433,5 @@ export function useBiblePageController(projectId: string): BiblePageController {
     onDeleteRelationship: relationshipActions.deleteRelationship,
     onSaveSceneLink: sceneLinkActions.saveSceneLink,
     onDeleteSceneLink: sceneLinkActions.deleteSceneLink,
-  });
-}
-
-function createControllerState(controller: BiblePageController): BiblePageController {
-  return controller;
+  };
 }
