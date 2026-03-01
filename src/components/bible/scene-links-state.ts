@@ -7,6 +7,7 @@ import type {
   ProjectScene,
   SaveBibleSceneLinkInput,
 } from '@/domain/bible/types';
+import { resolveIdInList } from '@/components/bible/bible-editor-utils';
 
 interface SceneLinkFormState {
   entityId: string;
@@ -66,23 +67,6 @@ function getVisibleSceneLinks(sceneLinks: BibleSceneLink[], selectedEntityId: st
   return sceneLinks.filter((sceneLink) => sceneLink.entityId === selectedEntityId);
 }
 
-function resolveEntityId(candidateEntityId: string, selectedEntityId: string | null, entities: BibleEntity[]): string {
-  const entityIds = new Set(entities.map((entity) => entity.id));
-  if (entityIds.has(candidateEntityId)) {
-    return candidateEntityId;
-  }
-
-  return selectedEntityId ?? entities[0]?.id ?? '';
-}
-
-function resolveSceneId(candidateSceneId: string, scenes: ProjectScene[]): string {
-  const sceneIds = new Set(scenes.map((scene) => scene.id));
-  if (sceneIds.has(candidateSceneId)) {
-    return candidateSceneId;
-  }
-
-  return scenes[0]?.id ?? '';
-}
 
 function createSubmitHandler({
   projectId,
@@ -130,10 +114,10 @@ export function useSceneLinksEditorState(input: SceneLinksEditorStateInput): Sce
     [sceneLinks, selectedEntityId],
   );
   const resolvedEntityId = useMemo(
-    () => resolveEntityId(entityId, selectedEntityId, entities),
+    () => resolveIdInList(entityId, entities, selectedEntityId),
     [entities, entityId, selectedEntityId],
   );
-  const resolvedSceneId = useMemo(() => resolveSceneId(sceneId, scenes), [sceneId, scenes]);
+  const resolvedSceneId = useMemo(() => resolveIdInList(sceneId, scenes), [sceneId, scenes]);
   const handleSubmit = createSubmitHandler({
     projectId,
     state: formState.state,
