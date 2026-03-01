@@ -32,6 +32,7 @@ type UseSceneEditorInput = {
   projectId: string;
   sceneId: string;
   service: SceneEditorServicePort;
+  onWordsSaved?: (delta: number) => void;
 };
 
 export type UseSceneEditorResult = {
@@ -98,6 +99,33 @@ function useRuntimeRefs(): SceneRuntimeRefs {
   );
 }
 
+type SaveAttemptInput = {
+  input: UseSceneEditorInput;
+  runtimeRefs: SceneRuntimeRefs;
+  patchViewState: ViewStateSetter;
+  payload: ReturnType<typeof createSavePayload> & object;
+  requestId: number;
+  previousWordCount: number;
+};
+
+async function executeSave(attempt: SaveAttemptInput): Promise<void> {
+  const { input, runtimeRefs, patchViewState, payload, requestId, previousWordCount } = attempt;
+  try {
+    const savedScene = await input.service.saveScene(payload);
+    const wordsDelta = input.service.countWords(savedScene.content) - previousWordCount;
+    applySaveSuccess({
+      runtimeRefs, patchViewState, requestId, payload, savedScene, wordsDelta, onWordsSaved: input.onWordsSaved,
+    });
+  } catch (error) {
+    applySaveFailure({ runtimeRefs, patchViewState, service: input.service, requestId, error });
+  } finally {
+    const inFlightCount = decrementRef(runtimeRefs.inFlightRequestCountRef);
+    if (runtimeRefs.isMountedRef.current && inFlightCount === 0) {
+      patchViewState({ isSaving: false });
+    }
+  }
+}
+
 function useRunSaveCycle(
   input: UseSceneEditorInput,
   runtimeRefs: SceneRuntimeRefs,
@@ -113,28 +141,12 @@ function useRunSaveCycle(
       return;
     }
 
+    const previousWordCount = input.service.countWords(runtimeRefs.sceneRef.current.content);
     const requestId = incrementRef(runtimeRefs.latestRequestRef);
     incrementRef(runtimeRefs.inFlightRequestCountRef);
     patchViewState({ isSaving: true });
-
-    try {
-      const savedScene = await input.service.saveScene(payload);
-      applySaveSuccess({ runtimeRefs, patchViewState, requestId, payload, savedScene });
-    } catch (error) {
-      applySaveFailure({
-        runtimeRefs,
-        patchViewState,
-        service: input.service,
-        requestId,
-        error,
-      });
-    } finally {
-      const inFlightCount = decrementRef(runtimeRefs.inFlightRequestCountRef);
-      if (runtimeRefs.isMountedRef.current && inFlightCount === 0) {
-        patchViewState({ isSaving: false });
-      }
-    }
-  }, [input.service, patchViewState, runtimeRefs]);
+    await executeSave({ input, runtimeRefs, patchViewState, payload, requestId, previousWordCount });
+  }, [input, patchViewState, runtimeRefs]);
 }
 
 function useMountLifecycle(runtimeRefs: SceneRuntimeRefs): void {
