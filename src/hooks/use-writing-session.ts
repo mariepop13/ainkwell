@@ -16,6 +16,8 @@ import {
   type SessionViewStateSetter,
 } from './use-writing-session-runtime';
 
+const TICK_INTERVAL_MS = 1000;
+
 type UseWritingSessionInput = {
   projectId: string;
   service: WritingSessionService;
@@ -74,7 +76,7 @@ function useStartStop(
       assignSessionRef(runtimeRefs.intervalRef, setInterval(() => {
         if (!runtimeRefs.isMountedRef.current) return;
         patchViewState({ elapsedSeconds: incrementSessionRef(runtimeRefs.elapsedSecondsRef) });
-      }, 1000));
+      }, TICK_INTERVAL_MS));
     } catch {
       patchViewState({ error: 'Failed to start writing session.' });
     }
