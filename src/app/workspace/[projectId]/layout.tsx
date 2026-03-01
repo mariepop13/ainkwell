@@ -1,12 +1,7 @@
-import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 
+import { WritingSessionProviderClient } from '@/components/writing-session/writing-session-provider-client';
 import { projectIdSchema } from '@/domain/project/schemas';
-
-const WritingSessionProvider = dynamic(
-  () => import('@/context/writing-session-context').then((m) => m.WritingSessionProvider),
-  { ssr: false },
-);
 
 export default async function ProjectLayout({
   children,
@@ -23,8 +18,8 @@ export default async function ProjectLayout({
   }
 
   return (
-    <WritingSessionProvider projectId={parsed.data}>
+    <WritingSessionProviderClient projectId={parsed.data}>
       {children}
-    </WritingSessionProvider>
+    </WritingSessionProviderClient>
   );
 }
