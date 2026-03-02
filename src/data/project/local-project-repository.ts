@@ -4,6 +4,7 @@ import type { ProjectRepository } from '@/domain/project/repository';
 import {
   createChapterInputSchema,
   createProjectInputSchema,
+  projectExportSchema,
   projectIdSchema,
   projectStorageSchema,
   updateProjectInputSchema,
@@ -16,11 +17,14 @@ import type {
   CreateProjectInput,
   MoveSceneToChapterInput,
   ProjectChapter,
+  ProjectExport,
   UpdateProjectInput,
   WritingProject,
 } from '@/domain/project/types';
+import { bibleStorageSchema } from '@/domain/bible/schemas';
 import { saveSceneInputSchema, sceneSchema, sceneSummarySchema } from '@/domain/scene/schemas';
 import type { Scene, SceneSummary } from '@/domain/scene/types';
+import { projectSessionDataSchema } from '@/domain/writing-session/schemas';
 import { generateProjectId } from '@/lib/utils';
 
 import {
@@ -457,6 +461,78 @@ export class LocalProjectRepository implements ProjectRepository {
         currentProject.id === input.projectId ? updatedProject : currentProject,
       ),
     );
+  }
+
+  public async exportProject(projectId: string): Promise<ProjectExport> {
+    const validProjectId = projectIdSchema.parse(projectId);
+    const storage = getStorage();
+    const projects = this.readProjects();
+    const project = projects.find((projectItem) => projectItem.id === validProjectId);
+
+    if (!project) {
+      throw new Error(projectNotFoundCode);
+    }
+
+    const bibleRaw = storage?.getItem(`ainkwell:projects:${validProjectId}:bible:v1`) ?? null;
+    const sessionsRaw = storage?.getItem(`ainkwell:projects:${validProjectId}:sessions:v1`) ?? null;
+
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      project,
+      bible: bibleRaw ? JSON.parse(bibleRaw) : null,
+      sessions: sessionsRaw ? JSON.parse(sessionsRaw) : null,
+    };
+  }
+
+  public async importProject(data: ProjectExport): Promise<void> {
+    const parsed = projectExportSchema.parse(data);
+    const storage = getStorage();
+
+    if (!storage) {
+      throw new Error(browserOnlyRepositoryMessage);
+    }
+
+    const importedTitleSuffix = ' (imported)';
+    const maxProjectTitleLength = 120;
+    const importedTitle =
+      parsed.project.title.length + importedTitleSuffix.length <= maxProjectTitleLength
+        ? `${parsed.project.title}${importedTitleSuffix}`
+        : `${parsed.project.title.slice(0, maxProjectTitleLength - importedTitleSuffix.length).trimEnd()}${importedTitleSuffix}`;
+
+    const newId = generateProjectId();
+    const importedProject = writingProjectSchema.parse({
+      ...parsed.project,
+      id: newId,
+      title: importedTitle,
+      scenes: Object.fromEntries(
+        Object.entries(parsed.project.scenes).map(([, scene]) => [
+          scene.id,
+          { ...scene, projectId: newId },
+        ]),
+      ),
+      chapters: Object.fromEntries(
+        Object.entries(parsed.project.chapters).map(([id, chapter]) => [
+          id,
+          { ...chapter, projectId: newId },
+        ]),
+      ),
+    });
+
+    const projectStorage = this.readProjectStorage();
+    this.writeProjectStorage({
+      version: PROJECT_STORAGE_VERSION,
+      projects: sortProjectsByUpdatedAt([importedProject, ...projectStorage.projects]),
+    });
+
+    if (parsed.bible) {
+      const validatedBible = bibleStorageSchema.parse(parsed.bible);
+      storage.setItem(`ainkwell:projects:${newId}:bible:v1`, JSON.stringify(validatedBible));
+    }
+    if (parsed.sessions) {
+      const validatedSessions = projectSessionDataSchema.parse(parsed.sessions);
+      storage.setItem(`ainkwell:projects:${newId}:sessions:v1`, JSON.stringify(validatedSessions));
+    }
   }
 
   public async moveSceneToChapter(input: MoveSceneToChapterInput): Promise<void> {

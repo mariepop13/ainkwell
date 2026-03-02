@@ -5,12 +5,14 @@ import { useParams } from 'next/navigation';
 import type { Dispatch, ReactElement, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ExportService } from '@/application/export/export-service';
 import { createChapterService } from '@/application/project/chapter-service';
 import { createProjectService } from '@/application/project/project-service';
 import type { ProjectService } from '@/application/project/project-service';
 import { SceneEditorService } from '@/application/scene/scene-editor-service';
 import { ChapterOutlinePanel } from '@/components/workspace/chapter-outline-panel';
 import { ChapterForm } from '@/components/workspace/chapter-form';
+import { ExportImportPanel } from '@/components/workspace/export-import-panel';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { projectIdSchema } from '@/domain/project/schemas';
 import type { ChapterSummary, WritingProject } from '@/domain/project/types';
@@ -434,10 +436,12 @@ function ProjectDetailView({
   project,
   projectId,
   chapterActions,
+  exportService,
 }: {
   project: WritingProject;
   projectId: string;
   chapterActions: ChapterActions;
+  exportService: ExportService;
 }): ReactElement {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-10">
@@ -453,6 +457,7 @@ function ProjectDetailView({
       <ChaptersSection projectId={projectId} project={project} chapterActions={chapterActions} />
       <ProjectStoryBibleSection projectId={projectId} />
       <ProjectWritingGoalsSection projectId={projectId} />
+      <ExportImportPanel exportService={exportService} projectId={projectId} projectTitle={project.title} />
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
         Back to workspace
       </Link>
@@ -464,10 +469,12 @@ function ProjectPageState({
   projectId,
   detail,
   chapterActions,
+  exportService,
 }: {
   projectId: string | null;
   detail: ProjectDetailResult;
   chapterActions: ChapterActions;
+  exportService: ExportService;
 }): ReactElement {
   if (!projectId) {
     return renderInvalidProjectIdState();
@@ -494,6 +501,7 @@ function ProjectPageState({
       project={detail.project}
       projectId={projectId}
       chapterActions={chapterActions}
+      exportService={exportService}
     />
   );
 }
@@ -546,6 +554,7 @@ export default function WorkspaceProjectPage(): ReactElement {
   const projectId = useProjectIdParam();
   const repository = useMemo(() => new LocalProjectRepository(), []);
   const projectService = useMemo(() => createProjectService(repository), [repository]);
+  const exportService = useMemo(() => new ExportService(repository), [repository]);
 
   const detail = useProjectDetail(projectId, projectService);
   const chapterActions = useChapterActions(projectId, detail.project, repository, detail.reload);
@@ -555,6 +564,7 @@ export default function WorkspaceProjectPage(): ReactElement {
       projectId={projectId}
       detail={detail}
       chapterActions={chapterActions}
+      exportService={exportService}
     />
   );
 }

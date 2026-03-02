@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "exportedAt": "2026-03-01T10:00:00.000Z",
+  "project": {
+    "id": "550e8400-e29b-4d4a-a716-446655440000",
+    "title": "Les Ombres de Valcourt",
+    "description": "Un roman policier historique se déroulant dans la France du XIXe siècle.",
+    "createdAt": "2026-01-15T08:00:00.000Z",
+    "updatedAt": "2026-02-28T18:30:00.000Z",
+    "stats": {
+      "wordCount": 1247,
+      "sceneCount": 4,
+      "chapterCount": 2
+    },
+    "settings": {
+      "language": "fr",
+      "targetWordCount": 80000
+    },
+    "chapterOrder": [
+      "chap-0001-0000-0000-000000000001",
+      "chap-0002-0000-0000-000000000002"
+    ],
+    "chapters": {
+      "chap-0001-0000-0000-000000000001": {
+        "id": "chap-0001-0000-0000-000000000001",
+        "projectId": "550e8400-e29b-4d4a-a716-446655440000",
+        "title": "L'Arrivée à Valcourt",
+        "sceneOrder": [
+          "scen-0001-0000-0000-000000000001",
+          "scen-0002-0000-0000-000000000002"
+        ],
+        "wordCount": 723,
+        "createdAt": "2026-01-15T08:00:00.000Z"
+      },
+      "chap-0002-0000-0000-000000000002": {
+        "id": "chap-0002-0000-0000-000000000002",
+        "projectId": "550e8400-e29b-4d4a-a716-446655440000",
+        "title": "Le Manoir Maudit",
+        "sceneOrder": [
+          "scen-0003-0000-0000-000000000003",
+          "scen-0004-0000-0000-000000000004"
+        ],
+        "wordCount": 524,
+        "createdAt": "2026-01-20T09:00:00.000Z"
+      }
+    },
+    "scenes": {
+      "scen-0001-0000-0000-000000000001": {
+        "id": "scen-0001-0000-0000-000000000001",
+        "projectId": "550e8400-e29b-4d4a-a716-446655440000",
+        "title": "La diligence",
+        "content": "La diligence cahota sur les pavés disjoints à l'entrée de Valcourt. Inspecteur Renaud écarta le rideau de cuir usé et observa la place du marché, déserte à cette heure matinale. Une brume grise s'accrochait aux toits d'ardoise, effaçant les contours des maisons comme une mauvaise conscience.\n\n— Valcourt, annonça le cocher depuis son perchoir. Terminus.\n\nRenaud descendit le premier, sa mallette de cuir noir sous le bras. Il n'était pas venu dans ce bourg depuis l'affaire Moreau, dix ans plus tôt. Rien n'avait changé, ou presque. La fontaine au centre de la place crachait toujours son filet d'eau rouillée. L'enseigne de l'auberge du Cerf d'Or se balançait dans le vent d'est.",
+        "status": "final",
+        "updatedAt": "2026-02-10T14:00:00.000Z"
+      },
+      "scen-0002-0000-0000-000000000002": {
+        "id": "scen-0002-0000-0000-000000000002",
+        "projectId": "550e8400-e29b-4d4a-a716-446655440000",
+        "title": "L'auberge du Cerf d'Or",
+        "content": "L'aubergiste, un homme trapu aux favoris poivre et sel, posa ses deux poings sur le comptoir de chêne.\n\n— On n'a pas eu de visiteurs depuis la mort du comte, dit-il à voix basse, comme si les murs pouvaient entendre.\n\nRenaud commanda un verre de cidre et attendit. Il avait appris depuis longtemps que le silence était souvent plus efficace qu'une question. L'aubergiste finit par remplir le verre, les yeux baissés.\n\n— Le château est fermé. Madame la comtesse refuse de recevoir quiconque. Ils disent qu'elle est folle de chagrin. Moi je dis qu'elle a peur.\n\n— Peur de quoi ?\n\nL'homme haussa les épaules et s'éloigna vers l'autre bout du bar, soudainement passionné par le polissage de ses chopes en étain.",
+        "status": "revise",
+        "updatedAt": "2026-02-15T16:30:00.000Z"
+      },
+      "scen-0003-0000-0000-000000000003": {
+        "id": "scen-0003-0000-0000-000000000003",
+        "projectId": "550e8400-e29b-4d4a-a716-446655440000",
+        "title": "Les grilles du château",
+        "content": "Le château de Valcourt se dressait au sommet de la colline boisée, ses tourelles pointant vers un ciel couleur d'ardoise. Renaud avait marché une heure depuis le bourg, suivant un chemin de terre que les pluies de février avaient transformé en ruisseau de boue.\n\nLes grilles en fer forgé étaient cadenassées. Rouillées, aussi, sauf là où quelqu'un les avait frottées récemment — les barreaux du bas brillaient d'un éclat suspect. Renaud s'accroupit et examina la terre à ses pieds. Des empreintes de bottes, larges, profondes. Plusieurs passages, dans les deux sens.",
+        "status": "draft",
+        "updatedAt": "2026-02-20T11:00:00.000Z"
+      },
+      "scen-0004-0000-0000-000000000004": {
+        "id": "scen-0004-0000-0000-000000000004",
+        "projectId": "550e8400-e29b-4d4a-a716-446655440000",
+        "title": "La comtesse",
+        "content": "Elle l'attendait dans le grand salon, assise dans un fauteuil face à la cheminée éteinte. Une femme d'une cinquantaine d'années, le dos droit malgré tout, les mains croisées sur les genoux dans une attitude qui ressemblait à de la dignité mais que Renaud reconnut pour ce qu'elle était : de la terreur maîtrisée.\n\n— Inspecteur, dit-elle sans se retourner. Je savais qu'on vous enverrait.\n\n— Madame la comtesse. Mon supérieur pense que la mort de votre mari mérite qu'on y regarde de plus près.\n\nUn silence. Le bois craqua quelque part dans la maison. Elle ne bougea pas.\n\n— Mon mari est tombé dans l'escalier. C'est un accident. Il n'y a rien à examiner.",
+        "status": "draft",
+        "updatedAt": "2026-02-28T18:30:00.000Z"
+      }
+    }
+  },
+  "bible": null,
+  "sessions": null
+}
