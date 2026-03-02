@@ -1,7 +1,7 @@
 'use client';
 import type { ReactElement } from 'react';
 import { useState } from 'react';
-import type { BibleEntity } from '@/domain/bible/bible';
+import type { BibleEntity } from '@/domain/bible/types';
 
 const CATEGORY_LABELS: Record<BibleEntity['category'], string> = {
   character: 'Character', location: 'Location', faction: 'Faction', lore: 'Lore',

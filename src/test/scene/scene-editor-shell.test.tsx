@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SceneEditorServicePort } from '@/application/scene/scene-editor-service';
+import type { BibleService } from '@/application/bible/bible-service';
 import { SceneEditorShell } from '@/components/scene/scene-editor-shell';
 import type { Scene } from '@/domain/scene/types';
 
@@ -14,6 +15,9 @@ const createScene = (overrides: Partial<Scene> = {}): Scene => ({
   updatedAt: '2026-02-25T10:00:00.000Z',
   ...overrides,
 });
+
+const createBibleServiceDouble = (): BibleService =>
+  ({ listEntities: vi.fn().mockReturnValue([]) }) as unknown as BibleService;
 
 const createServiceDouble = (options: {
   saveScene?: SceneEditorServicePort['saveScene'];
@@ -69,7 +73,7 @@ describe('SceneEditorShell', () => {
   it('updates word count when scene content changes', async () => {
     const service = createServiceDouble({});
 
-    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} />);
+    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} bibleService={createBibleServiceDouble()} />);
 
     await screen.findByText('Scene 1');
     expect(screen.getByText('2 words')).toBeInTheDocument();
@@ -91,7 +95,7 @@ describe('SceneEditorShell', () => {
     );
     const service = createServiceDouble({ saveScene });
 
-    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} />);
+    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} bibleService={createBibleServiceDouble()} />);
     await screen.findByText('Scene 1');
     vi.useFakeTimers();
 
@@ -120,7 +124,7 @@ describe('SceneEditorShell', () => {
       );
     const service = createServiceDouble({ saveScene });
 
-    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} />);
+    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} bibleService={createBibleServiceDouble()} />);
     await screen.findByText('Scene 1');
     vi.useFakeTimers();
 
@@ -144,7 +148,7 @@ describe('SceneEditorShell', () => {
     vi.mocked(service.loadScene).mockRejectedValueOnce(new Error('LOAD_FAILURE'));
     vi.mocked(service.toUserErrorMessage).mockReturnValueOnce('Unable to load scene.');
 
-    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} />);
+    render(<SceneEditorShell projectId="demo-project" sceneId="scene-1" service={service} bibleService={createBibleServiceDouble()} />);
 
     expect(await screen.findByText('Unable to load scene')).toBeInTheDocument();
     expect(screen.getByText('Unable to load scene.')).toBeInTheDocument();

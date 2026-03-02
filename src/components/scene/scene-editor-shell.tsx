@@ -8,12 +8,16 @@ import {
   SceneEditorService,
   type SceneEditorServicePort,
 } from '@/application/scene/scene-editor-service';
+import { BibleService } from '@/application/bible/bible-service';
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
+import { CodexContextPanel } from '@/components/scene/codex-context-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
 import { WritingSessionContext } from '@/context/writing-session-context';
+import { LocalBibleRepository } from '@/data/bible/local-bible-repository';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
+import { useCodexContext } from '@/hooks/use-codex-context';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
 import { useWritingSession } from '@/hooks/use-writing-session';
 
@@ -22,6 +26,7 @@ type SceneEditorShellProps = {
   sceneId: string;
   service?: SceneEditorServicePort;
   writingService?: WritingSessionService;
+  bibleService?: BibleService;
 };
 
 const createSceneEditorService = (): SceneEditorServicePort =>
@@ -29,6 +34,9 @@ const createSceneEditorService = (): SceneEditorServicePort =>
 
 const createWritingSessionService = (): WritingSessionService =>
   new WritingSessionService(new LocalWritingSessionRepository());
+
+const createBibleService = (): BibleService =>
+  new BibleService(new LocalBibleRepository());
 
 type SceneStateViewProps = {
   projectId: string;
@@ -160,9 +168,16 @@ type SceneEditorLoadedViewProps = {
   sessionElapsedSeconds: number;
   onSessionStart: () => void;
   onSessionStop: () => Promise<void>;
+  bibleService: BibleService;
 };
 
 function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement {
+  const { matchedEntities } = useCodexContext({
+    projectId: props.projectId,
+    content: props.sceneEditor.content,
+    service: props.bibleService,
+  });
+
   if (!props.sceneEditor.scene) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-4 py-8">
@@ -192,16 +207,19 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
         onStop={props.onSessionStop}
       />
 
-      <section className="flex-1 rounded-xl border bg-card p-4 text-card-foreground">
-        <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
-          Markdown content
-        </label>
-        <textarea
-          id="scene-content"
-          value={props.sceneEditor.content}
-          onChange={(event) => props.sceneEditor.setContent(event.target.value)}
-          className="min-h-[60vh] w-full resize-y rounded-md border bg-background p-3 font-mono text-sm"
-        />
+      <section className="flex flex-1 overflow-hidden rounded-xl border bg-card text-card-foreground">
+        <div className="flex flex-1 flex-col p-4">
+          <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
+            Markdown content
+          </label>
+          <textarea
+            id="scene-content"
+            value={props.sceneEditor.content}
+            onChange={(event) => props.sceneEditor.setContent(event.target.value)}
+            className="min-h-[60vh] flex-1 w-full resize-y rounded-md border bg-background p-3 font-mono text-sm"
+          />
+        </div>
+        <CodexContextPanel entities={matchedEntities} />
       </section>
 
       <SceneEditorNavigation
@@ -222,6 +240,11 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
   const writingService = useMemo<WritingSessionService>(
     () => props.writingService ?? createWritingSessionService(),
     [props.writingService],
+  );
+
+  const bibleService = useMemo<BibleService>(
+    () => props.bibleService ?? createBibleService(),
+    [props.bibleService],
   );
 
   const contextSession = useContext(WritingSessionContext);
@@ -257,6 +280,7 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
       sessionElapsedSeconds={writingSession.elapsedSeconds}
       onSessionStart={writingSession.startSession}
       onSessionStop={handleSessionStop}
+      bibleService={bibleService}
     />
   );
 }

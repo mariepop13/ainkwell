@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCodexContext } from '@/hooks/use-codex-context';
 import type { BibleService } from '@/application/bible/bible-service';
-import type { BibleEntity } from '@/domain/bible/bible';
+import type { BibleEntity } from '@/domain/bible/types';
 
 describe('useCodexContext', () => {
   const makeEntity = (name: string): BibleEntity => ({
@@ -13,7 +13,7 @@ describe('useCodexContext', () => {
 
   it('returns empty array when content is empty', async () => {
     const mockService = {
-      listEntities: vi.fn().mockResolvedValue([makeEntity('Aria')]),
+      listEntities: vi.fn().mockReturnValue([makeEntity('Aria')]),
     } as unknown as BibleService;
 
     const { result } = renderHook(() =>
@@ -27,7 +27,7 @@ describe('useCodexContext', () => {
     const aria = makeEntity('Aria');
     const marcus = makeEntity('Marcus');
     const mockService = {
-      listEntities: vi.fn().mockResolvedValue([aria, marcus]),
+      listEntities: vi.fn().mockReturnValue([aria, marcus]),
     } as unknown as BibleService;
 
     const { result } = renderHook(() =>
@@ -44,7 +44,7 @@ describe('useCodexContext', () => {
     vi.useFakeTimers();
     const aria = makeEntity('Aria');
     const mockService = {
-      listEntities: vi.fn().mockResolvedValue([aria]),
+      listEntities: vi.fn().mockReturnValue([aria]),
     } as unknown as BibleService;
 
     const { result } = renderHook(() =>
@@ -60,7 +60,7 @@ describe('useCodexContext', () => {
     vi.useFakeTimers();
     const ark = makeEntity('Ark');
     const mockService = {
-      listEntities: vi.fn().mockResolvedValue([ark]),
+      listEntities: vi.fn().mockReturnValue([ark]),
     } as unknown as BibleService;
 
     const { result } = renderHook(() =>

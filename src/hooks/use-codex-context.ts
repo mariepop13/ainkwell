@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { BibleEntity } from '@/domain/bible/bible';
+import type { BibleEntity } from '@/domain/bible/types';
 import type { BibleService } from '@/application/bible/bible-service';
 
 const DEBOUNCE_MS = 800;
@@ -24,10 +24,9 @@ export function useCodexContext({ projectId, content, service }: UseCodexContext
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(() => {
-      service.listEntities(projectId).then((entities) => {
-        const matches = findMentionedEntities(content, entities);
-        setMatchedEntities(matches.slice(0, MAX_MATCHES));
-      });
+      const entities = service.listEntities(projectId);
+      const matches = findMentionedEntities(content, entities);
+      setMatchedEntities(matches.slice(0, MAX_MATCHES));
     }, DEBOUNCE_MS);
 
     return () => {
