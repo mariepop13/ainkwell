@@ -1,22 +1,32 @@
 'use client';
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 
-import { ExportService } from '@/application/export/export-service';
-import { LocalProjectRepository } from '@/data/project/local-project-repository';
+import type { ExportService } from '@/application/export/export-service';
 
-type Props = { projectId: string; projectTitle: string };
+type Props = { exportService: ExportService; projectId: string; projectTitle: string };
 
-export function ExportImportPanel({ projectId, projectTitle }: Props): ReactElement {
-  const service = new ExportService(new LocalProjectRepository());
+export function ExportImportPanel({ exportService, projectId, projectTitle }: Props): ReactElement {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleExportJson(): Promise<void> {
-    const data = await service.exportProjectJson(projectId);
-    downloadFile(JSON.stringify(data, null, 2), `${slugify(projectTitle)}-backup.json`, 'application/json');
+    setErrorMessage(null);
+    try {
+      const data = await exportService.exportProjectJson(projectId);
+      downloadFile(JSON.stringify(data, null, 2), `${slugify(projectTitle)}-backup.json`, 'application/json');
+    } catch {
+      setErrorMessage('Unable to export JSON backup.');
+    }
   }
 
   async function handleExportMarkdown(): Promise<void> {
-    const markdown = await service.exportProjectMarkdown(projectId);
-    downloadFile(markdown, `${slugify(projectTitle)}.md`, 'text/markdown');
+    setErrorMessage(null);
+    try {
+      const markdown = await exportService.exportProjectMarkdown(projectId);
+      downloadFile(markdown, `${slugify(projectTitle)}.md`, 'text/markdown');
+    } catch {
+      setErrorMessage('Unable to export Markdown.');
+    }
   }
 
   return (
@@ -41,6 +51,11 @@ export function ExportImportPanel({ projectId, projectTitle }: Props): ReactElem
           Export Markdown
         </button>
       </div>
+      {errorMessage ? (
+        <p aria-live="polite" className="text-xs text-destructive" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
     </section>
   );
 }

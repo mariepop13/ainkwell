@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { type ChangeEvent, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
 import { ExportService } from '@/application/export/export-service';
@@ -30,7 +30,7 @@ function ImportProjectButton({ onSuccess }: { onSuccess: () => void }): ReactEle
   const fileInputRef = useRef<HTMLInputElement>(null);
   const service = new ExportService(new LocalProjectRepository());
 
-  async function handleImport(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
     if (!file) return;
     setImporting(true);
@@ -40,7 +40,8 @@ function ImportProjectButton({ onSuccess }: { onSuccess: () => void }): ReactEle
       const data: ProjectExport = JSON.parse(text);
       await service.importProjectJson(data);
       onSuccess();
-    } catch {
+    } catch (error: unknown) {
+      console.error('Project import failed.', error);
       setError('Invalid backup file. Make sure it is a valid Ainkwell JSON export.');
     } finally {
       setImporting(false);
@@ -58,7 +59,11 @@ function ImportProjectButton({ onSuccess }: { onSuccess: () => void }): ReactEle
         {importing ? 'Importing…' : 'Import JSON backup'}
       </button>
       <input accept=".json" className="hidden" onChange={handleImport} ref={fileInputRef} type="file" />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error ? (
+        <p aria-live="polite" className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

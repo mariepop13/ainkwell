@@ -21,8 +21,10 @@ import type {
   UpdateProjectInput,
   WritingProject,
 } from '@/domain/project/types';
+import { bibleStorageSchema } from '@/domain/bible/schemas';
 import { saveSceneInputSchema, sceneSchema, sceneSummarySchema } from '@/domain/scene/schemas';
 import type { Scene, SceneSummary } from '@/domain/scene/types';
+import { projectSessionDataSchema } from '@/domain/writing-session/schemas';
 import { generateProjectId } from '@/lib/utils';
 
 import {
@@ -458,16 +460,17 @@ export class LocalProjectRepository implements ProjectRepository {
   }
 
   public async exportProject(projectId: string): Promise<ProjectExport> {
+    const validProjectId = projectIdSchema.parse(projectId);
     const storage = getStorage();
     const projects = this.readProjects();
-    const project = projects.find((p) => p.id === projectId);
+    const project = projects.find((projectItem) => projectItem.id === validProjectId);
 
     if (!project) {
       throw new Error(projectNotFoundCode);
     }
 
-    const bibleRaw = storage?.getItem(`ainkwell:projects:${projectId}:bible:v1`) ?? null;
-    const sessionsRaw = storage?.getItem(`ainkwell:projects:${projectId}:sessions:v1`) ?? null;
+    const bibleRaw = storage?.getItem(`ainkwell:projects:${validProjectId}:bible:v1`) ?? null;
+    const sessionsRaw = storage?.getItem(`ainkwell:projects:${validProjectId}:sessions:v1`) ?? null;
 
     return {
       version: 1,
@@ -486,11 +489,18 @@ export class LocalProjectRepository implements ProjectRepository {
       throw new Error(browserOnlyRepositoryMessage);
     }
 
+    const importedTitleSuffix = ' (imported)';
+    const maxProjectTitleLength = 120;
+    const importedTitle =
+      parsed.project.title.length + importedTitleSuffix.length <= maxProjectTitleLength
+        ? `${parsed.project.title}${importedTitleSuffix}`
+        : `${parsed.project.title.slice(0, maxProjectTitleLength - importedTitleSuffix.length).trimEnd()}${importedTitleSuffix}`;
+
     const newId = generateProjectId();
     const importedProject = writingProjectSchema.parse({
       ...parsed.project,
       id: newId,
-      title: `${parsed.project.title} (imported)`,
+      title: importedTitle,
       scenes: Object.fromEntries(
         Object.entries(parsed.project.scenes).map(([, scene]) => [
           scene.id,
@@ -512,10 +522,12 @@ export class LocalProjectRepository implements ProjectRepository {
     });
 
     if (parsed.bible) {
-      storage.setItem(`ainkwell:projects:${newId}:bible:v1`, JSON.stringify(parsed.bible));
+      const validatedBible = bibleStorageSchema.parse(parsed.bible);
+      storage.setItem(`ainkwell:projects:${newId}:bible:v1`, JSON.stringify(validatedBible));
     }
     if (parsed.sessions) {
-      storage.setItem(`ainkwell:projects:${newId}:sessions:v1`, JSON.stringify(parsed.sessions));
+      const validatedSessions = projectSessionDataSchema.parse(parsed.sessions);
+      storage.setItem(`ainkwell:projects:${newId}:sessions:v1`, JSON.stringify(validatedSessions));
     }
   }
 

@@ -244,7 +244,7 @@ export const projectStorageSchema = z.object({
 
 export const projectExportSchema = z.object({
   version: z.literal(1),
-  exportedAt: z.string(),
+  exportedAt: z.string().datetime({ offset: true }),
   project: writingProjectSchema,
   bible: z.unknown().nullable(),
   sessions: z.unknown().nullable(),

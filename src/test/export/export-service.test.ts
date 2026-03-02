@@ -3,6 +3,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExportService } from '@/application/export/export-service';
 import type { ProjectRepository } from '@/domain/project/repository';
 
+const validProjectId = '550e8400-e29b-4d4a-a716-446655440000';
+
+const validExportData = {
+  version: 1 as const,
+  exportedAt: '2026-01-01T00:00:00.000Z',
+  project: {
+    id: validProjectId,
+    title: 'My Novel',
+    description: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    settings: { language: 'en', targetWordCount: null },
+    stats: { wordCount: 0, sceneCount: 0, chapterCount: 0 },
+    chapterOrder: [],
+    chapters: {},
+    scenes: {},
+  },
+  bible: null,
+  sessions: null,
+};
+
 describe('ExportService', () => {
   let mockRepository: ProjectRepository;
 
@@ -14,57 +35,57 @@ describe('ExportService', () => {
   });
 
   it('calls exportProject with project id', async () => {
-    vi.mocked(mockRepository.exportProject).mockResolvedValue({
-      version: 1,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      project: { id: 'p1', title: 'My Novel' } as any,
-      bible: null,
-      sessions: null,
-    });
+    vi.mocked(mockRepository.exportProject).mockResolvedValue(validExportData);
 
     const service = new ExportService(mockRepository);
-    const result = await service.exportProjectJson('p1');
-    expect(mockRepository.exportProject).toHaveBeenCalledWith('p1');
-    expect(result.project.id).toBe('p1');
+    const result = await service.exportProjectJson(validProjectId);
+    expect(mockRepository.exportProject).toHaveBeenCalledWith(validProjectId);
+    expect(result.project.id).toBe(validProjectId);
   });
 
   it('calls importProject with parsed data', async () => {
     vi.mocked(mockRepository.importProject).mockResolvedValue(undefined);
 
-    const data = {
-      version: 1 as const,
-      exportedAt: '2026-01-01T00:00:00.000Z',
-      project: { id: 'p1', title: 'My Novel' } as any,
-      bible: null,
-      sessions: null,
-    };
-
     const service = new ExportService(mockRepository);
-    await service.importProjectJson(data);
-    expect(mockRepository.importProject).toHaveBeenCalledWith(data);
+    await service.importProjectJson(validExportData);
+    expect(mockRepository.importProject).toHaveBeenCalledWith(validExportData);
   });
 
   it('exportProjectMarkdown calls exportProject and returns markdown string', async () => {
+    const chapterId = 'aaaaaaaa-0000-4000-8000-000000000001';
+    const sceneId = 'aaaaaaaa-0000-4000-8000-000000000002';
+
     vi.mocked(mockRepository.exportProject).mockResolvedValue({
-      version: 1,
-      exportedAt: '2026-01-01T00:00:00.000Z',
+      ...validExportData,
       project: {
-        id: 'p1',
-        title: 'My Novel',
-        chapterOrder: ['ch1'],
+        ...validExportData.project,
+        chapterOrder: [chapterId],
         chapters: {
-          ch1: { id: 'ch1', title: 'Chapter One', sceneOrder: ['sc1'] },
+          [chapterId]: {
+            id: chapterId,
+            projectId: validProjectId,
+            title: 'Chapter One',
+            sceneOrder: [sceneId],
+          },
         },
         scenes: {
-          sc1: { id: 'sc1', title: 'Scene One', content: 'Once upon a time.' },
+          [sceneId]: {
+            id: sceneId,
+            projectId: validProjectId,
+            chapterId,
+            title: 'Scene One',
+            content: 'Once upon a time.',
+            status: 'draft' as const,
+            wordCount: 4,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
         },
-      } as any,
-      bible: null,
-      sessions: null,
+      },
     });
 
     const service = new ExportService(mockRepository);
-    const markdown = await service.exportProjectMarkdown('p1');
+    const markdown = await service.exportProjectMarkdown(validProjectId);
     expect(markdown).toContain('# My Novel');
     expect(markdown).toContain('## Chapter One');
     expect(markdown).toContain('### Scene One');
