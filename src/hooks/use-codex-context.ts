@@ -5,6 +5,7 @@ import type { BibleEntity } from '@/domain/bible/types';
 
 const DEBOUNCE_MS = 800;
 const MAX_MATCHES = 10;
+const MAX_ENTITY_NAME_LENGTH = 100;
 
 type UseCodexContextInput = {
   projectId: string;
@@ -44,6 +45,7 @@ function findMentionedEntities(content: string, entities: BibleEntity[]): BibleE
 
   for (const entity of entities) {
     if (seenIds.has(entity.id)) continue;
+    if (entity.name.length > MAX_ENTITY_NAME_LENGTH) continue;
     const pattern = new RegExp(`\\b${escapeRegex(entity.name)}\\b`, 'i');
     if (pattern.test(content)) {
       mentioned.push(entity);

@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 import { useCallback, useContext, useMemo } from 'react';
 
 import { BibleService } from '@/application/bible/bible-service';
+import { createBibleService as createDefaultBibleService } from '@/application/bible/create-bible-service';
 import {
   SceneEditorService,
   type SceneEditorServicePort,
@@ -15,7 +16,7 @@ import { SceneBeatPanel } from '@/components/scene/scene-beat-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
 import { WritingSessionContext } from '@/context/writing-session-context';
-import { LocalBibleRepository } from '@/data/bible/local-bible-repository';
+
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import type { BibleEntity } from '@/domain/bible/types';
@@ -37,8 +38,7 @@ const createSceneEditorService = (): SceneEditorServicePort =>
 const createWritingSessionService = (): WritingSessionService =>
   new WritingSessionService(new LocalWritingSessionRepository());
 
-const createBibleService = (): BibleService =>
-  new BibleService(new LocalBibleRepository());
+const createBibleService = (): BibleService => createDefaultBibleService();
 
 function useShellServices(props: Pick<SceneEditorShellProps, 'service' | 'writingService' | 'bibleService'>) {
   const service = useMemo(() => props.service ?? createSceneEditorService(), [props.service]);
@@ -189,7 +189,15 @@ type SceneContentSectionProps = {
   onBeatsChange: (beats: import('@/domain/scene/schemas').SceneBeat[]) => void;
 };
 
-function SceneContentSection({ content, onContentChange, matchedEntities, synopsis, beats, onSynopsisChange, onBeatsChange }: SceneContentSectionProps): ReactElement {
+function SceneContentSection({
+  content,
+  onContentChange,
+  matchedEntities,
+  synopsis,
+  beats,
+  onSynopsisChange,
+  onBeatsChange,
+}: SceneContentSectionProps): ReactElement {
   return (
     <section className="flex flex-1 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground">
       <SceneBeatPanel

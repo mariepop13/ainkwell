@@ -24,15 +24,17 @@ export function CodexContextPanel({ entities }: Props): ReactElement {
   return (
     <div className="w-64 shrink-0 border-l border-border bg-card">
       <button
+        aria-controls="codex-panel-content"
+        aria-expanded={isOpen}
         className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium text-foreground"
         onClick={() => setIsOpen((v) => !v)}
         type="button"
       >
         <span>Codex ({entities.length})</span>
-        <span className="text-muted-foreground">{isOpen ? '▶' : '◀'}</span>
+        <span aria-hidden="true" className="text-muted-foreground">{isOpen ? '▶' : '◀'}</span>
       </button>
       {isOpen && (
-        <div className="space-y-2 overflow-y-auto px-3 pb-4" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+        <div className="space-y-2 overflow-y-auto px-3 pb-4" id="codex-panel-content" style={{ maxHeight: 'calc(100vh - 120px)' }}>
           {entities.map((entity) => (
             <div className="rounded-md border border-border bg-background p-2" key={entity.id}>
               <div className="mb-1 flex items-center gap-2">
