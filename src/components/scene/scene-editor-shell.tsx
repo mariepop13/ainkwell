@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactElement } from 'react';
-import { useCallback, useContext, useMemo } from 'react';
+import { memo, useCallback, useMemo, type ReactElement } from 'react';
 
 import { BibleService } from '@/application/bible/bible-service';
 import { createBibleService as createDefaultBibleService } from '@/application/bible/create-bible-service';
@@ -15,7 +14,7 @@ import { CodexContextPanel } from '@/components/scene/codex-context-panel';
 import { SceneBeatPanel } from '@/components/scene/scene-beat-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
-import { WritingSessionContext } from '@/context/writing-session-context';
+import { useWritingSessionActions, useWritingSessionTimer } from '@/context/writing-session-context';
 
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
@@ -143,7 +142,7 @@ type SceneEditorNavigationProps = {
   nextSceneId: string | null;
 };
 
-function SceneEditorNavigation(props: SceneEditorNavigationProps): ReactElement {
+const SceneEditorNavigation = memo(function SceneEditorNavigation(props: SceneEditorNavigationProps): ReactElement {
   return (
     <nav className="flex items-center justify-between">
       {props.previousSceneId ? (
@@ -177,7 +176,7 @@ function SceneEditorNavigation(props: SceneEditorNavigationProps): ReactElement 
       )}
     </nav>
   );
-}
+});
 
 type SceneContentSectionProps = {
   content: string;
@@ -189,7 +188,7 @@ type SceneContentSectionProps = {
   onBeatsChange: (beats: import('@/domain/scene/schemas').SceneBeat[]) => void;
 };
 
-function SceneContentSection({
+const SceneContentSection = memo(function SceneContentSection({
   content,
   onContentChange,
   matchedEntities,
@@ -222,19 +221,34 @@ function SceneContentSection({
       </div>
     </section>
   );
+});
+
+type SessionTimerConnectorProps = {
+  onStart: () => void;
+  onStop: () => Promise<void>;
+};
+
+function SessionTimerConnector({ onStart, onStop }: SessionTimerConnectorProps): ReactElement {
+  const contextTimer = useWritingSessionTimer();
+  return (
+    <SessionTimer
+      isRunning={contextTimer?.isRunning ?? false}
+      elapsedSeconds={contextTimer?.elapsedSeconds ?? 0}
+      onStart={onStart}
+      onStop={onStop}
+    />
+  );
 }
 
 type SceneEditorLoadedViewProps = {
   projectId: string;
   sceneEditor: UseSceneEditorResult;
-  isSessionRunning: boolean;
-  sessionElapsedSeconds: number;
   onSessionStart: () => void;
   onSessionStop: () => Promise<void>;
   bibleService: BibleService;
 };
 
-function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement {
+const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement {
   const { matchedEntities } = useCodexContext({
     projectId: props.projectId,
     content: props.sceneEditor.content,
@@ -257,12 +271,7 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
         onRetrySave={props.sceneEditor.retrySave}
       />
 
-      <SessionTimer
-        isRunning={props.isSessionRunning}
-        elapsedSeconds={props.sessionElapsedSeconds}
-        onStart={props.onSessionStart}
-        onStop={props.onSessionStop}
-      />
+      <SessionTimerConnector onStart={props.onSessionStart} onStop={props.onSessionStop} />
 
       <SceneContentSection
         content={props.sceneEditor.content}
@@ -281,23 +290,26 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
       />
     </main>
   );
-}
+});
 
 export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
   const { service, writingService, bibleService } = useShellServices(props);
-  const contextSession = useContext(WritingSessionContext);
+  const contextActions = useWritingSessionActions();
   const localSession = useWritingSession({ projectId: props.projectId, service: writingService });
-  const writingSession = contextSession ?? localSession;
+
+  const startSession = contextActions?.startSession ?? localSession.startSession;
+  const stopSession = contextActions?.stopSession ?? localSession.stopSession;
+  const onWordsSaved = contextActions?.onWordsSaved ?? localSession.onWordsSaved;
 
   const handleSessionStop = useCallback(async (): Promise<void> => {
-    await writingSession.stopSession();
-  }, [writingSession]);
+    await stopSession();
+  }, [stopSession]);
 
   const sceneEditor = useSceneEditor({
     projectId: props.projectId,
     sceneId: props.sceneId,
     service,
-    onWordsSaved: writingSession.onWordsSaved,
+    onWordsSaved,
   });
   const stateView = getSceneStateView({
     projectId: props.projectId,
@@ -314,9 +326,7 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     <SceneEditorLoadedView
       projectId={props.projectId}
       sceneEditor={sceneEditor}
-      isSessionRunning={writingSession.isRunning}
-      sessionElapsedSeconds={writingSession.elapsedSeconds}
-      onSessionStart={writingSession.startSession}
+      onSessionStart={startSession}
       onSessionStop={handleSessionStop}
       bibleService={bibleService}
     />
