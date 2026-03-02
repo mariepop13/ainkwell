@@ -1,17 +1,12 @@
 'use client';
-import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
 import { ExportService } from '@/application/export/export-service';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
-import type { ProjectExport } from '@/domain/project/types';
 
 type Props = { projectId: string; projectTitle: string };
 
 export function ExportImportPanel({ projectId, projectTitle }: Props): ReactElement {
-  const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const service = new ExportService(new LocalProjectRepository());
 
   async function handleExportJson(): Promise<void> {
@@ -24,29 +19,11 @@ export function ExportImportPanel({ projectId, projectTitle }: Props): ReactElem
     downloadFile(markdown, `${slugify(projectTitle)}.md`, 'text/markdown');
   }
 
-  async function handleImport(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    setError(null);
-    try {
-      const text = await file.text();
-      const data: ProjectExport = JSON.parse(text);
-      await service.importProjectJson(data);
-      window.location.reload();
-    } catch {
-      setError('Invalid backup file. Make sure it is a valid Ainkwell JSON export.');
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }
-
   return (
     <section className="rounded-lg border p-4 space-y-3">
-      <h2 className="text-2xl font-headline font-semibold">Export & Import</h2>
+      <h2 className="text-2xl font-headline font-semibold">Export</h2>
       <p className="text-sm text-muted-foreground">
-        Download a full JSON backup or a Markdown manuscript, or restore a project from a previous backup.
+        Download a full JSON backup or a Markdown manuscript of this project.
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -63,16 +40,7 @@ export function ExportImportPanel({ projectId, projectTitle }: Props): ReactElem
         >
           Export Markdown
         </button>
-        <button
-          className="rounded border border-border px-3 py-1.5 text-xs hover:bg-muted"
-          onClick={() => fileInputRef.current?.click()}
-          type="button"
-        >
-          {importing ? 'Importing…' : 'Import JSON backup'}
-        </button>
-        <input accept=".json" className="hidden" onChange={handleImport} ref={fileInputRef} type="file" />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
     </section>
   );
 }
