@@ -77,3 +77,11 @@ export type UpdateProjectInput = {
   settings?: Partial<ProjectSettings>;
   stats?: Partial<ProjectStats>;
 };
+
+export type ProjectExport = {
+  version: 1;
+  exportedAt: string;
+  project: WritingProject;
+  bible: unknown | null;
+  sessions: unknown | null;
+};
