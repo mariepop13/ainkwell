@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react';
 
 import type { SceneEditorServicePort } from '@/application/scene/scene-editor-service';
+import type { SceneBeat } from '@/domain/scene/schemas';
 import type { Scene, SceneStatus } from '@/domain/scene/types';
 
 export type SceneEditorLoadState =
@@ -14,6 +15,8 @@ export type SceneViewState = {
   scene: Scene | null;
   content: string;
   status: SceneStatus;
+  synopsis: string;
+  beats: SceneBeat[];
   isDirty: boolean;
   isSaving: boolean;
   saveError: string | null;
@@ -27,6 +30,8 @@ export type SceneRuntimeRefs = {
   sceneRef: MutableRefObject<Scene | null>;
   contentRef: MutableRefObject<string>;
   statusRef: MutableRefObject<SceneStatus>;
+  synopsisRef: MutableRefObject<string>;
+  beatsRef: MutableRefObject<SceneBeat[]>;
   isDirtyRef: MutableRefObject<boolean>;
   latestRequestRef: MutableRefObject<number>;
   latestAppliedRequestRef: MutableRefObject<number>;
@@ -44,6 +49,8 @@ export type SavePayload = {
   content: string;
   status: SceneStatus;
   updatedAt: string;
+  synopsis?: string;
+  beats?: SceneBeat[];
 };
 
 type SaveSuccessInput = {
@@ -76,6 +83,8 @@ export const initialViewState: SceneViewState = {
   scene: null,
   content: '',
   status: 'draft',
+  synopsis: '',
+  beats: [],
   isDirty: false,
   isSaving: false,
   saveError: null,
@@ -114,6 +123,8 @@ export const resetRuntimeRefs = (runtimeRefs: SceneRuntimeRefs): void => {
   assignRef(runtimeRefs.sceneRef, null);
   assignRef(runtimeRefs.contentRef, '');
   assignRef(runtimeRefs.statusRef, 'draft');
+  assignRef(runtimeRefs.synopsisRef, '');
+  assignRef(runtimeRefs.beatsRef, []);
   assignRef(runtimeRefs.isDirtyRef, false);
   assignRef(runtimeRefs.latestRequestRef, 0);
   assignRef(runtimeRefs.latestAppliedRequestRef, 0);
@@ -147,6 +158,8 @@ export const applyLoadedScene = (input: ApplyLoadedInput): void => {
   assignRef(runtimeRefs.sceneRef, scene);
   assignRef(runtimeRefs.contentRef, scene.content);
   assignRef(runtimeRefs.statusRef, scene.status);
+  assignRef(runtimeRefs.synopsisRef, scene.synopsis ?? '');
+  assignRef(runtimeRefs.beatsRef, scene.beats ?? []);
   assignRef(runtimeRefs.isDirtyRef, false);
   assignRef(runtimeRefs.latestRequestRef, 0);
   assignRef(runtimeRefs.latestAppliedRequestRef, 0);
@@ -156,6 +169,8 @@ export const applyLoadedScene = (input: ApplyLoadedInput): void => {
     scene,
     content: scene.content,
     status: scene.status,
+    synopsis: scene.synopsis ?? '',
+    beats: scene.beats ?? [],
     isDirty: false,
     isSaving: false,
     saveError: null,
@@ -176,6 +191,8 @@ export const createSavePayload = (runtimeRefs: SceneRuntimeRefs): SavePayload | 
     sceneId: runtimeRefs.sceneRef.current.id,
     content: runtimeRefs.contentRef.current,
     status: runtimeRefs.statusRef.current,
+    synopsis: runtimeRefs.synopsisRef.current || undefined,
+    beats: runtimeRefs.beatsRef.current,
     updatedAt: new Date().toISOString(),
   };
 };
@@ -196,7 +213,10 @@ export const applySaveSuccess = (input: SaveSuccessInput): void => {
   patchViewState({ scene: savedScene, lastSavedAt: savedScene.updatedAt });
 
   const payloadStillCurrent =
-    runtimeRefs.contentRef.current === payload.content && runtimeRefs.statusRef.current === payload.status;
+    runtimeRefs.contentRef.current === payload.content &&
+    runtimeRefs.statusRef.current === payload.status &&
+    (runtimeRefs.synopsisRef.current || undefined) === payload.synopsis &&
+    JSON.stringify(runtimeRefs.beatsRef.current) === JSON.stringify(payload.beats ?? []);
 
   if (!payloadStillCurrent) {
     return;

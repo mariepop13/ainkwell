@@ -11,6 +11,7 @@ import {
 } from '@/application/scene/scene-editor-service';
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { CodexContextPanel } from '@/components/scene/codex-context-panel';
+import { SceneBeatPanel } from '@/components/scene/scene-beat-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
 import { WritingSessionContext } from '@/context/writing-session-context';
@@ -182,23 +183,35 @@ type SceneContentSectionProps = {
   content: string;
   onContentChange: (value: string) => void;
   matchedEntities: BibleEntity[];
+  synopsis: string;
+  beats: import('@/domain/scene/schemas').SceneBeat[];
+  onSynopsisChange: (value: string) => void;
+  onBeatsChange: (beats: import('@/domain/scene/schemas').SceneBeat[]) => void;
 };
 
-function SceneContentSection({ content, onContentChange, matchedEntities }: SceneContentSectionProps): ReactElement {
+function SceneContentSection({ content, onContentChange, matchedEntities, synopsis, beats, onSynopsisChange, onBeatsChange }: SceneContentSectionProps): ReactElement {
   return (
-    <section className="flex flex-1 overflow-hidden rounded-xl border bg-card text-card-foreground">
-      <div className="flex flex-1 flex-col p-4">
-        <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
-          Markdown content
-        </label>
-        <textarea
-          id="scene-content"
-          value={content}
-          onChange={(event) => onContentChange(event.target.value)}
-          className="min-h-[60vh] flex-1 w-full resize-y rounded-md border bg-background p-3 font-mono text-sm"
-        />
+    <section className="flex flex-1 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground">
+      <SceneBeatPanel
+        synopsis={synopsis}
+        beats={beats}
+        onSynopsisChange={onSynopsisChange}
+        onBeatsChange={onBeatsChange}
+      />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col p-4">
+          <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
+            Markdown content
+          </label>
+          <textarea
+            id="scene-content"
+            value={content}
+            onChange={(event) => onContentChange(event.target.value)}
+            className="min-h-[60vh] flex-1 w-full resize-y rounded-md border bg-background p-3 font-mono text-sm"
+          />
+        </div>
+        <CodexContextPanel entities={matchedEntities} />
       </div>
-      <CodexContextPanel entities={matchedEntities} />
     </section>
   );
 }
@@ -247,6 +260,10 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
         content={props.sceneEditor.content}
         onContentChange={props.sceneEditor.setContent}
         matchedEntities={matchedEntities}
+        synopsis={props.sceneEditor.synopsis}
+        beats={props.sceneEditor.beats}
+        onSynopsisChange={props.sceneEditor.setSynopsis}
+        onBeatsChange={props.sceneEditor.setBeats}
       />
 
       <SceneEditorNavigation

@@ -1,3 +1,4 @@
+import type { SceneBeat } from '@/domain/scene/schemas';
 import type {
   ChapterSummary,
   CreateChapterInput,
@@ -25,6 +26,8 @@ export interface ProjectRepository {
     content: string;
     status: SceneStatus;
     updatedAt: string;
+    synopsis?: string;
+    beats?: SceneBeat[];
   }): Promise<Scene>;
   listChapters(input: { projectId: string }): Promise<ChapterSummary[]>;
   createChapter(input: CreateChapterInput): Promise<ProjectChapter>;

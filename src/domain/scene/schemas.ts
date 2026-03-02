@@ -15,6 +15,23 @@ const updatedAtSchema = z.string().datetime({ offset: true });
 
 export const sceneStatusSchema = z.enum(['draft', 'revise', 'final']);
 
+export const beatTypeSchema = z.enum([
+  'setup',
+  'conflict',
+  'resolution',
+  'action',
+  'dialogue',
+  'revelation',
+]);
+export type BeatType = z.infer<typeof beatTypeSchema>;
+
+export const sceneBeatSchema = z.object({
+  id: z.string().min(1),
+  content: z.string().max(200),
+  type: beatTypeSchema,
+});
+export type SceneBeat = z.infer<typeof sceneBeatSchema>;
+
 export const sceneSchema = z.object({
   id: sceneIdSchema,
   projectId: projectIdSchema,
@@ -22,6 +39,8 @@ export const sceneSchema = z.object({
   content: sceneContentSchema,
   status: sceneStatusSchema,
   updatedAt: updatedAtSchema,
+  synopsis: z.string().max(300).optional(),
+  beats: z.array(sceneBeatSchema).max(20).optional(),
 });
 
 export const sceneSummarySchema = sceneSchema.pick({
@@ -38,6 +57,8 @@ export const saveSceneInputSchema = z.object({
   content: sceneContentSchema,
   status: sceneStatusSchema,
   updatedAt: updatedAtSchema,
+  synopsis: z.string().max(300).optional(),
+  beats: z.array(sceneBeatSchema).max(20).optional(),
 });
 
 const legacySceneSchema = z.object({

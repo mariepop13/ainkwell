@@ -7,6 +7,7 @@ import {
 } from 'react';
 
 import type { SceneEditorServicePort } from '@/application/scene/scene-editor-service';
+import type { SceneBeat } from '@/domain/scene/schemas';
 import type { Scene, SceneStatus } from '@/domain/scene/types';
 
 import {
@@ -39,6 +40,8 @@ export type UseSceneEditorResult = {
   scene: Scene | null;
   content: string;
   status: SceneStatus;
+  synopsis: string;
+  beats: SceneBeat[];
   wordCount: number;
   isDirty: boolean;
   isSaving: boolean;
@@ -49,6 +52,8 @@ export type UseSceneEditorResult = {
   loadState: SceneEditorLoadState;
   setContent: (value: string) => void;
   setStatus: (value: SceneStatus) => void;
+  setSynopsis: (value: string) => void;
+  setBeats: (beats: SceneBeat[]) => void;
   retrySave: () => Promise<void>;
 };
 
@@ -76,6 +81,8 @@ function useRuntimeRefs(): SceneRuntimeRefs {
   const sceneRef = useRef<Scene | null>(null);
   const contentRef = useRef<string>('');
   const statusRef = useRef<SceneStatus>('draft');
+  const synopsisRef = useRef<string>('');
+  const beatsRef = useRef<SceneBeat[]>([]);
   const isDirtyRef = useRef<boolean>(false);
   const latestRequestRef = useRef<number>(0);
   const latestAppliedRequestRef = useRef<number>(0);
@@ -88,6 +95,8 @@ function useRuntimeRefs(): SceneRuntimeRefs {
       sceneRef,
       contentRef,
       statusRef,
+      synopsisRef,
+      beatsRef,
       isDirtyRef,
       latestRequestRef,
       latestAppliedRequestRef,
@@ -236,10 +245,12 @@ function useAutosave(
   }, [
     runSaveCycle,
     runtimeRefs,
+    viewState.beats,
     viewState.content,
     viewState.isDirty,
     viewState.loadState,
     viewState.status,
+    viewState.synopsis,
   ]);
 }
 
@@ -247,7 +258,7 @@ function useEditorMutators(
   runtimeRefs: SceneRuntimeRefs,
   patchViewState: ViewStateSetter,
   runSaveCycle: () => Promise<void>,
-): Pick<UseSceneEditorResult, 'setContent' | 'setStatus' | 'retrySave'> {
+): Pick<UseSceneEditorResult, 'setContent' | 'setStatus' | 'setSynopsis' | 'setBeats' | 'retrySave'> {
   const setContent = useCallback(
     (value: string): void => {
       assignRef(runtimeRefs.contentRef, value);
@@ -266,12 +277,30 @@ function useEditorMutators(
     [patchViewState, runtimeRefs],
   );
 
+  const setSynopsis = useCallback(
+    (value: string): void => {
+      assignRef(runtimeRefs.synopsisRef, value);
+      patchViewState({ synopsis: value, saveError: null });
+      markDirty(runtimeRefs, patchViewState);
+    },
+    [patchViewState, runtimeRefs],
+  );
+
+  const setBeats = useCallback(
+    (beats: SceneBeat[]): void => {
+      assignRef(runtimeRefs.beatsRef, beats);
+      patchViewState({ beats, saveError: null });
+      markDirty(runtimeRefs, patchViewState);
+    },
+    [patchViewState, runtimeRefs],
+  );
+
   const retrySave = useCallback(async (): Promise<void> => {
     patchViewState({ saveError: null });
     await runSaveCycle();
   }, [patchViewState, runSaveCycle]);
 
-  return { setContent, setStatus, retrySave };
+  return { setContent, setStatus, setSynopsis, setBeats, retrySave };
 }
 
 export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult {
@@ -283,7 +312,7 @@ export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult
   useLoadScene(input, runtimeRefs, patchViewState, replaceViewState);
   useAutosave(runtimeRefs, viewState, runSaveCycle);
 
-  const { setContent, setStatus, retrySave } = useEditorMutators(
+  const { setContent, setStatus, setSynopsis, setBeats, retrySave } = useEditorMutators(
     runtimeRefs,
     patchViewState,
     runSaveCycle,
@@ -298,6 +327,8 @@ export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult
     scene: viewState.scene,
     content: viewState.content,
     status: viewState.status,
+    synopsis: viewState.synopsis,
+    beats: viewState.beats,
     wordCount,
     isDirty: viewState.isDirty,
     isSaving: viewState.isSaving,
@@ -308,6 +339,8 @@ export function useSceneEditor(input: UseSceneEditorInput): UseSceneEditorResult
     loadState: viewState.loadState,
     setContent,
     setStatus,
+    setSynopsis,
+    setBeats,
     retrySave,
   };
 }
