@@ -205,6 +205,9 @@ export default function WorkspacePage(): ReactElement {
         workspaceState.setEditingProjectId(null);
       }}
       onCreateProject={workspaceState.createProject}
+      onImportProject={() => {
+        void loadProjects();
+      }}
       onDeleteProject={(projectId: string) => {
         void workspaceState.deleteProject(projectId);
       }}

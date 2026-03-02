@@ -1,4 +1,10 @@
+'use client';
+import { type ChangeEvent, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+
+import { ExportService } from '@/application/export/export-service';
+import { LocalProjectRepository } from '@/data/project/local-project-repository';
+import type { ProjectExport } from '@/domain/project/types';
 import { ProjectCard } from '@/components/workspace/project-card';
 import { ProjectForm, type ProjectFormValues } from '@/components/workspace/project-form';
 import type { WritingProject } from '@/domain/project/types';
@@ -11,11 +17,56 @@ type WorkspacePageContentProps = {
   submitting: boolean;
   onRetry: () => void;
   onCreateProject: (values: ProjectFormValues) => Promise<void>;
+  onImportProject: () => void;
   onEditProject: (projectId: string) => void;
   onCancelEdit: () => void;
   onUpdateProject: (projectId: string, values: ProjectFormValues) => Promise<void>;
   onDeleteProject: (projectId: string) => void;
 };
+
+function ImportProjectButton({ onSuccess }: { onSuccess: () => void }): ReactElement {
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const service = new ExportService(new LocalProjectRepository());
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const text = await file.text();
+      const data: ProjectExport = JSON.parse(text);
+      await service.importProjectJson(data);
+      onSuccess();
+    } catch (error: unknown) {
+      console.error('Project import failed.', error);
+      setError('Invalid backup file. Make sure it is a valid Ainkwell JSON export.');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <button
+        className="rounded border border-border px-3 py-1.5 text-xs hover:bg-muted"
+        onClick={() => fileInputRef.current?.click()}
+        type="button"
+      >
+        {importing ? 'Importing…' : 'Import JSON backup'}
+      </button>
+      <input accept=".json" className="hidden" onChange={handleImport} ref={fileInputRef} type="file" />
+      {error ? (
+        <p aria-live="polite" className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function WorkspaceHeader(): ReactElement {
   return (
@@ -141,7 +192,7 @@ function WorkspaceProjectList({
   onCancelEdit,
   onUpdateProject,
   onDeleteProject,
-}: Omit<WorkspacePageContentProps, 'errorMessage' | 'onRetry' | 'onCreateProject'>): ReactElement {
+}: Omit<WorkspacePageContentProps, 'errorMessage' | 'onRetry' | 'onCreateProject' | 'onImportProject'>): ReactElement {
   if (loading) {
     return <p data-testid="workspace-loading">Loading projects...</p>;
   }
@@ -175,6 +226,7 @@ export function WorkspacePageContent({
   submitting,
   onRetry,
   onCreateProject,
+  onImportProject,
   onEditProject,
   onCancelEdit,
   onUpdateProject,
@@ -186,7 +238,10 @@ export function WorkspacePageContent({
       {errorMessage ? <WorkspaceErrorBanner errorMessage={errorMessage} onRetry={onRetry} /> : null}
       <ProjectForm isSubmitting={submitting} mode="create" onSubmit={onCreateProject} />
       <section className="space-y-3">
-        <h2 className="text-2xl font-headline font-semibold">Projects</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-headline font-semibold">Projects</h2>
+          <ImportProjectButton onSuccess={onImportProject} />
+        </div>
         <WorkspaceProjectList
           editingProjectId={editingProjectId}
           loading={loading}
