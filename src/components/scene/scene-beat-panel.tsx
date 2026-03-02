@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 
 import type { BeatType, SceneBeat } from '@/domain/scene/schemas';
@@ -23,21 +23,21 @@ const BEAT_LABELS: Record<BeatType, string> = {
   revelation: 'Revelation',
 };
 
-export function SceneBeatPanel({ synopsis, beats, onSynopsisChange, onBeatsChange }: Props): ReactElement {
+export const SceneBeatPanel = memo(function SceneBeatPanel({ synopsis, beats, onSynopsisChange, onBeatsChange }: Props): ReactElement {
   const [isOpen, setIsOpen] = useState(false);
 
-  function addBeat(): void {
+  const addBeat = useCallback((): void => {
     if (beats.length >= maxBeatsPerScene) return;
     onBeatsChange([...beats, { id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`, content: '', type: 'setup' }]);
-  }
+  }, [beats, onBeatsChange]);
 
-  function updateBeat(id: string, changes: Partial<SceneBeat>): void {
+  const updateBeat = useCallback((id: string, changes: Partial<SceneBeat>): void => {
     onBeatsChange(beats.map((beat) => (beat.id === id ? { ...beat, ...changes } : beat)));
-  }
+  }, [beats, onBeatsChange]);
 
-  function removeBeat(id: string): void {
+  const removeBeat = useCallback((id: string): void => {
     onBeatsChange(beats.filter((beat) => beat.id !== id));
-  }
+  }, [beats, onBeatsChange]);
 
   return (
     <div className="border-b border-border bg-card">
@@ -54,9 +54,10 @@ export function SceneBeatPanel({ synopsis, beats, onSynopsisChange, onBeatsChang
       {isOpen && (
         <div className="space-y-3 px-4 pb-4" id="scene-plan-panel">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Synopsis</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="beat-synopsis">Synopsis</label>
             <input
               className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              id="beat-synopsis"
               maxLength={300}
               onChange={(event) => onSynopsisChange(event.target.value)}
               placeholder="What happens in this scene?"
@@ -114,4 +115,4 @@ export function SceneBeatPanel({ synopsis, beats, onSynopsisChange, onBeatsChang
       )}
     </div>
   );
-}
+});
