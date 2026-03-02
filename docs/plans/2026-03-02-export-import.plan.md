@@ -1,30 +1,33 @@
 ---
 name: Export & Import
 overview: Allow writers to export their projects as JSON (backup/restore) and as Markdown (portability), and import from JSON backup.
+status: done
+merged: "2026-03-02"
+pr: 11
 todos:
   - id: 1
     content: "Define ExportService in application layer with exportProjectJson, importProjectJson, exportProjectMarkdown"
-    status: pending
+    status: done
     dependencies: []
   - id: 2
     content: "Add exportProject/importProject methods to ProjectRepository interface"
-    status: pending
+    status: done
     dependencies: []
   - id: 3
     content: "Implement export/import in LocalProjectRepository"
-    status: pending
+    status: done
     dependencies: [1, 2]
   - id: 4
     content: "Build ExportImportPanel component"
-    status: pending
+    status: done
     dependencies: [3]
   - id: 5
     content: "Integrate panel into workspace project detail page"
-    status: pending
+    status: done
     dependencies: [4]
   - id: 6
     content: "Write tests for ExportService"
-    status: pending
+    status: done
     dependencies: [1]
 ---
 

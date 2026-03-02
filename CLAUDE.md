@@ -29,10 +29,10 @@ domain/ → application/ → data/ → components/ → app/
 ```
 
 - **`src/domain/`** — Pure types, interfaces, and Zod schemas. No implementation. Defines `ProjectRepository` and `BibleRepository` interfaces.
-- **`src/application/`** — Business logic services (`ProjectService`, `ChapterService`, `BibleService`, `SceneEditorService`, `WritingSessionService`). Validated via Zod schemas. Depend only on domain interfaces.
+- **`src/application/`** — Business logic services (`ProjectService`, `ChapterService`, `BibleService`, `SceneEditorService`, `WritingSessionService`, `ExportService`). Validated via Zod schemas. Depend only on domain interfaces.
 - **`src/data/`** — Concrete repository implementations (`LocalProjectRepository`, `LocalBibleRepository`, `LocalWritingSessionRepository`). All persist exclusively to `window.localStorage`. No cloud/server dependency.
 - **`src/components/`** — React components organized by feature (`bible/`, `scene/`, `workspace/`, `writing-session/`). Page-level controllers (e.g. `bible-page-controller.ts`) are hooks that compose services and manage state.
-- **`src/hooks/`** — Shared hooks. `use-scene-editor.ts` (autosave, 800ms debounce) and `use-writing-session.ts` (live timer, word delta). Both isolate mutable refs in a companion `*-runtime.ts` hook to prevent stale closures.
+- **`src/hooks/`** — Shared hooks. `use-scene-editor.ts` (autosave, 800ms debounce) and `use-writing-session.ts` (live timer, word delta) isolate mutable refs in a companion `*-runtime.ts` hook to prevent stale closures. `use-codex-context.ts` scans scene content for story bible entity mentions (debounced 800ms, whole-word case-insensitive, max 10 results).
 - **`src/app/`** — Next.js App Router pages. All pages are client components (`'use client'`) due to localStorage dependency.
 
 ## Local Storage Keys
@@ -44,6 +44,8 @@ domain/ → application/ → data/ → components/ → app/
 | `ainkwell:projects:{id}:scenes:v1` | Bible's own scene list per project |
 | `ainkwell:projects:{id}:sessions:v1` | Writing sessions + daily goal per project |
 | `ainkwell:workspace:v1` | Legacy key — migrated automatically on first read |
+
+> **SSR gotcha:** `LocalBibleRepository` and `LocalWritingSessionRepository` fall back to `noOpStorage` when `typeof window === 'undefined'` (SSR). `LocalProjectRepository` uses `getStorage()` which returns `null` on the server — always guard writes with a null check.
 
 ## Code Conventions
 
