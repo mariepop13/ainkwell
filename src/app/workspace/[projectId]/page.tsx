@@ -11,6 +11,7 @@ import type { ProjectService } from '@/application/project/project-service';
 import { SceneEditorService } from '@/application/scene/scene-editor-service';
 import { ChapterOutlinePanel } from '@/components/workspace/chapter-outline-panel';
 import { ChapterForm } from '@/components/workspace/chapter-form';
+import { ExportImportPanel } from '@/components/workspace/export-import-panel';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { projectIdSchema } from '@/domain/project/schemas';
 import type { ChapterSummary, WritingProject } from '@/domain/project/types';
@@ -453,6 +454,7 @@ function ProjectDetailView({
       <ChaptersSection projectId={projectId} project={project} chapterActions={chapterActions} />
       <ProjectStoryBibleSection projectId={projectId} />
       <ProjectWritingGoalsSection projectId={projectId} />
+      <ExportImportPanel projectId={projectId} projectTitle={project.title} />
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
         Back to workspace
       </Link>
