@@ -77,6 +77,8 @@ const unavailableStorage: Storage = {
 
 export class LocalBibleRepository implements BibleRepository {
   private readonly storage: Storage;
+  private readonly bibleCache = new Map<string, BibleStorageDocument>();
+  private readonly scenesCache = new Map<string, ProjectScene[]>();
 
   public constructor(storage?: Storage) {
     if (storage) {
@@ -262,22 +264,24 @@ export class LocalBibleRepository implements BibleRepository {
 
   private readBible(projectId: string): BibleStorageDocument {
     const normalizedProjectId = normalizeProjectId(projectId);
-    const rawValue = this.storage.getItem(this.bibleStorageKey(normalizedProjectId));
-    const parsedValue = parseJson(rawValue);
 
-    if (!parsedValue) {
-      return cloneEmptyBibleStorage();
+    if (!this.bibleCache.has(normalizedProjectId)) {
+      const rawValue = this.storage.getItem(this.bibleStorageKey(normalizedProjectId));
+      const parsedValue = parseJson(rawValue);
+      const parsedStorage = parsedValue ? bibleStorageSchema.safeParse(parsedValue) : null;
+      this.bibleCache.set(
+        normalizedProjectId,
+        parsedStorage?.success
+          ? { entities: parsedStorage.data.entities, relationships: parsedStorage.data.relationships, sceneLinks: parsedStorage.data.sceneLinks }
+          : cloneEmptyBibleStorage(),
+      );
     }
 
-    const parsedStorage = bibleStorageSchema.safeParse(parsedValue);
-    if (!parsedStorage.success) {
-      return cloneEmptyBibleStorage();
-    }
-
+    const cached = this.bibleCache.get(normalizedProjectId)!;
     return {
-      entities: [...parsedStorage.data.entities],
-      relationships: [...parsedStorage.data.relationships],
-      sceneLinks: [...parsedStorage.data.sceneLinks],
+      entities: [...cached.entities],
+      relationships: [...cached.relationships],
+      sceneLinks: [...cached.sceneLinks],
     };
   }
 
@@ -286,23 +290,20 @@ export class LocalBibleRepository implements BibleRepository {
     const parsedStorage = bibleStorageSchema.parse(bibleStorage);
     const payload = JSON.stringify(parsedStorage);
     this.storage.setItem(this.bibleStorageKey(normalizedProjectId), payload);
+    this.bibleCache.set(normalizedProjectId, { entities: parsedStorage.entities, relationships: parsedStorage.relationships, sceneLinks: parsedStorage.sceneLinks });
   }
 
   private readScenes(projectId: string): ProjectScene[] {
     const normalizedProjectId = normalizeProjectId(projectId);
-    const rawValue = this.storage.getItem(this.projectScenesStorageKey(normalizedProjectId));
-    const parsedValue = parseJson(rawValue);
 
-    if (!parsedValue) {
-      return [];
+    if (!this.scenesCache.has(normalizedProjectId)) {
+      const rawValue = this.storage.getItem(this.projectScenesStorageKey(normalizedProjectId));
+      const parsedValue = parseJson(rawValue);
+      const parsedScenes = parsedValue ? projectScenesSchema.safeParse(parsedValue) : null;
+      this.scenesCache.set(normalizedProjectId, parsedScenes?.success ? parsedScenes.data : []);
     }
 
-    const parsedScenes = projectScenesSchema.safeParse(parsedValue);
-    if (!parsedScenes.success) {
-      return [];
-    }
-
-    return [...parsedScenes.data];
+    return [...this.scenesCache.get(normalizedProjectId)!];
   }
 
   private writeScenes(projectId: string, scenes: ProjectScene[]): void {
@@ -310,6 +311,7 @@ export class LocalBibleRepository implements BibleRepository {
     const parsedScenes = projectScenesSchema.parse(scenes);
     const payload = JSON.stringify(parsedScenes);
     this.storage.setItem(this.projectScenesStorageKey(normalizedProjectId), payload);
+    this.scenesCache.set(normalizedProjectId, parsedScenes);
   }
 
   private bibleStorageKey(projectId: string): string {
