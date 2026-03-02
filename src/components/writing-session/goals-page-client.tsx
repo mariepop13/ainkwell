@@ -2,11 +2,8 @@
 
 import Link from 'next/link';
 import type { ReactElement } from 'react';
-import { useMemo } from 'react';
 
-import { WritingSessionService } from '@/application/writing-session/writing-session-service';
-import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
-import { useWritingSession } from '@/hooks/use-writing-session';
+import { useWritingSessionActions, useWritingSessionTimer } from '@/context/writing-session-context';
 
 import { DailyGoalForm } from './daily-goal-form';
 import { DailyProgress } from './daily-progress';
@@ -70,13 +67,18 @@ function DashboardPanels({ dashboard }: { dashboard: SessionDashboard }): ReactE
 }
 
 export function GoalsPageClient({ projectId, projectTitle }: GoalsPageClientProps): ReactElement {
-  const repository = useMemo(() => new LocalWritingSessionRepository(), []);
-  const service = useMemo(() => new WritingSessionService(repository), [repository]);
-  const { dashboard, isRunning, elapsedSeconds, error, startSession, stopSession, setDailyGoal } =
-    useWritingSession({ projectId, service });
+  const contextActions = useWritingSessionActions();
+  const contextTimer = useWritingSessionTimer();
+
+  const dashboard = contextActions?.dashboard ?? null;
+  const error = contextActions?.error ?? null;
+  const startSession = contextActions?.startSession ?? (() => undefined);
+  const setDailyGoal = contextActions?.setDailyGoal ?? (() => undefined);
+  const isRunning = contextTimer?.isRunning ?? false;
+  const elapsedSeconds = contextTimer?.elapsedSeconds ?? 0;
 
   const handleStop = async (): Promise<void> => {
-    await stopSession();
+    await contextActions?.stopSession();
   };
 
   return (
