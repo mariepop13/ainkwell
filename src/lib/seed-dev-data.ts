@@ -10,25 +10,25 @@ type SessionSeedData = {
   id: string;
   daysAgo: number;
   durationSeconds: number;
-  durationMilliseconds: number;
   wordsWritten: number;
 };
 
 const SESSION_SEEDS: SessionSeedData[] = [
-  { id: 'seed-session-1', daysAgo: 1, durationSeconds: 1500, durationMilliseconds: 1_500_000, wordsWritten: 350 },
-  { id: 'seed-session-2', daysAgo: 3, durationSeconds: 900, durationMilliseconds: 900_000, wordsWritten: 200 },
-  { id: 'seed-session-3', daysAgo: 5, durationSeconds: 2100, durationMilliseconds: 2_100_000, wordsWritten: 450 },
+  { id: 'seed-session-1', daysAgo: 1, durationSeconds: 1500, wordsWritten: 350 },
+  { id: 'seed-session-2', daysAgo: 3, durationSeconds: 900, wordsWritten: 200 },
+  { id: 'seed-session-3', daysAgo: 5, durationSeconds: 2100, wordsWritten: 450 },
 ];
 
 function seedSessions(sessionRepo: LocalWritingSessionRepository, projectId: string): void {
   const now = Date.now();
   for (const seed of SESSION_SEEDS) {
     const startedAt = now - seed.daysAgo * MILLISECONDS_PER_DAY;
+    const durationMilliseconds = seed.durationSeconds * 1000;
     sessionRepo.saveSession({
       id: seed.id,
       projectId,
       startedAt: new Date(startedAt).toISOString(),
-      endedAt: new Date(startedAt + seed.durationMilliseconds).toISOString(),
+      endedAt: new Date(startedAt + durationMilliseconds).toISOString(),
       durationSeconds: seed.durationSeconds,
       wordsWritten: seed.wordsWritten,
     });
