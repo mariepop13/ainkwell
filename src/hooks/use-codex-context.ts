@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { BibleEntity } from '@/domain/bible/types';
 import type { BibleService } from '@/application/bible/bible-service';
+import type { BibleEntity } from '@/domain/bible/types';
 
 const DEBOUNCE_MS = 800;
 const MAX_MATCHES = 10;
