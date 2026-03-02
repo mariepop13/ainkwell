@@ -268,8 +268,8 @@ export class LocalProjectRepository implements ProjectRepository {
       content: parsedInput.content,
       status: parsedInput.status,
       updatedAt: parsedInput.updatedAt,
-      synopsis: parsedInput.synopsis,
-      beats: parsedInput.beats,
+      ...(parsedInput.synopsis !== undefined ? { synopsis: parsedInput.synopsis } : {}),
+      ...(parsedInput.beats !== undefined ? { beats: parsedInput.beats } : {}),
     });
 
     const updatedProject = withRecalculatedStats(

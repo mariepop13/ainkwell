@@ -26,7 +26,7 @@ export const beatTypeSchema = z.enum([
 export type BeatType = z.infer<typeof beatTypeSchema>;
 
 export const sceneBeatSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1),
   content: z.string().max(200),
   type: beatTypeSchema,
 });

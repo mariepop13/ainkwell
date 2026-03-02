@@ -216,7 +216,7 @@ export const applySaveSuccess = (input: SaveSuccessInput): void => {
     runtimeRefs.contentRef.current === payload.content &&
     runtimeRefs.statusRef.current === payload.status &&
     (runtimeRefs.synopsisRef.current || undefined) === payload.synopsis &&
-    runtimeRefs.beatsRef.current === payload.beats;
+    JSON.stringify(runtimeRefs.beatsRef.current) === JSON.stringify(payload.beats ?? []);
 
   if (!payloadStillCurrent) {
     return;
