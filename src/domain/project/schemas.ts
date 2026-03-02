@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { maxSceneContentLength, sceneStatusSchema } from '@/domain/scene/schemas';
+import { maxSceneContentLength, sceneBeatSchema, sceneStatusSchema } from '@/domain/scene/schemas';
 
 const uuidV4Regex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -69,6 +69,8 @@ export const projectSceneSchema = z.object({
   content: sceneContentSchema,
   status: sceneStatusSchema,
   updatedAt: z.string().datetime({ offset: true }),
+  synopsis: z.string().max(300).optional(),
+  beats: z.array(sceneBeatSchema).max(20).optional(),
 });
 
 export const projectChapterSchema = z.object({
