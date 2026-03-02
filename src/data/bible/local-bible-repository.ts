@@ -279,9 +279,9 @@ export class LocalBibleRepository implements BibleRepository {
 
     const cached = this.bibleCache.get(normalizedProjectId)!;
     return {
-      entities: [...cached.entities],
-      relationships: [...cached.relationships],
-      sceneLinks: [...cached.sceneLinks],
+      entities: cached.entities.map((entity) => ({ ...entity, tags: [...entity.tags] })),
+      relationships: cached.relationships.map((relationship) => ({ ...relationship })),
+      sceneLinks: cached.sceneLinks.map((sceneLink) => ({ ...sceneLink })),
     };
   }
 
@@ -303,7 +303,7 @@ export class LocalBibleRepository implements BibleRepository {
       this.scenesCache.set(normalizedProjectId, parsedScenes?.success ? parsedScenes.data : []);
     }
 
-    return [...this.scenesCache.get(normalizedProjectId)!];
+    return this.scenesCache.get(normalizedProjectId)!.map((scene) => ({ ...scene }));
   }
 
   private writeScenes(projectId: string, scenes: ProjectScene[]): void {

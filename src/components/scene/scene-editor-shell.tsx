@@ -19,6 +19,7 @@ import { useWritingSessionActions, useWritingSessionTimer } from '@/context/writ
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import type { BibleEntity } from '@/domain/bible/types';
+import type { SceneBeat } from '@/domain/scene/schemas';
 import { useCodexContext } from '@/hooks/use-codex-context';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
 import { useWritingSession } from '@/hooks/use-writing-session';
@@ -183,9 +184,9 @@ type SceneContentSectionProps = {
   onContentChange: (value: string) => void;
   matchedEntities: BibleEntity[];
   synopsis: string;
-  beats: import('@/domain/scene/schemas').SceneBeat[];
+  beats: SceneBeat[];
   onSynopsisChange: (value: string) => void;
-  onBeatsChange: (beats: import('@/domain/scene/schemas').SceneBeat[]) => void;
+  onBeatsChange: (beats: SceneBeat[]) => void;
 };
 
 const SceneContentSection = memo(function SceneContentSection({
@@ -226,14 +227,16 @@ const SceneContentSection = memo(function SceneContentSection({
 type SessionTimerConnectorProps = {
   onStart: () => void;
   onStop: () => Promise<void>;
+  fallbackIsRunning: boolean;
+  fallbackElapsedSeconds: number;
 };
 
-function SessionTimerConnector({ onStart, onStop }: SessionTimerConnectorProps): ReactElement {
+function SessionTimerConnector({ onStart, onStop, fallbackIsRunning, fallbackElapsedSeconds }: SessionTimerConnectorProps): ReactElement {
   const contextTimer = useWritingSessionTimer();
   return (
     <SessionTimer
-      isRunning={contextTimer?.isRunning ?? false}
-      elapsedSeconds={contextTimer?.elapsedSeconds ?? 0}
+      isRunning={contextTimer?.isRunning ?? fallbackIsRunning}
+      elapsedSeconds={contextTimer?.elapsedSeconds ?? fallbackElapsedSeconds}
       onStart={onStart}
       onStop={onStop}
     />
@@ -246,6 +249,8 @@ type SceneEditorLoadedViewProps = {
   onSessionStart: () => void;
   onSessionStop: () => Promise<void>;
   bibleService: BibleService;
+  fallbackIsRunning: boolean;
+  fallbackElapsedSeconds: number;
 };
 
 const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement {
@@ -271,7 +276,12 @@ const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEd
         onRetrySave={props.sceneEditor.retrySave}
       />
 
-      <SessionTimerConnector onStart={props.onSessionStart} onStop={props.onSessionStop} />
+      <SessionTimerConnector
+        onStart={props.onSessionStart}
+        onStop={props.onSessionStop}
+        fallbackIsRunning={props.fallbackIsRunning}
+        fallbackElapsedSeconds={props.fallbackElapsedSeconds}
+      />
 
       <SceneContentSection
         content={props.sceneEditor.content}
@@ -329,6 +339,8 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
       onSessionStart={startSession}
       onSessionStop={handleSessionStop}
       bibleService={bibleService}
+      fallbackIsRunning={localSession.isRunning}
+      fallbackElapsedSeconds={localSession.elapsedSeconds}
     />
   );
 }
