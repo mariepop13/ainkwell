@@ -4,6 +4,7 @@ import type { ProjectRepository } from '@/domain/project/repository';
 import {
   createChapterInputSchema,
   createProjectInputSchema,
+  projectExportSchema,
   projectIdSchema,
   projectStorageSchema,
   updateProjectInputSchema,
@@ -16,6 +17,7 @@ import type {
   CreateProjectInput,
   MoveSceneToChapterInput,
   ProjectChapter,
+  ProjectExport,
   UpdateProjectInput,
   WritingProject,
 } from '@/domain/project/types';
@@ -453,6 +455,68 @@ export class LocalProjectRepository implements ProjectRepository {
         currentProject.id === input.projectId ? updatedProject : currentProject,
       ),
     );
+  }
+
+  public async exportProject(projectId: string): Promise<ProjectExport> {
+    const storage = getStorage();
+    const projects = this.readProjects();
+    const project = projects.find((p) => p.id === projectId);
+
+    if (!project) {
+      throw new Error(projectNotFoundCode);
+    }
+
+    const bibleRaw = storage?.getItem(`ainkwell:projects:${projectId}:bible:v1`) ?? null;
+    const sessionsRaw = storage?.getItem(`ainkwell:projects:${projectId}:sessions:v1`) ?? null;
+
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      project,
+      bible: bibleRaw ? JSON.parse(bibleRaw) : null,
+      sessions: sessionsRaw ? JSON.parse(sessionsRaw) : null,
+    };
+  }
+
+  public async importProject(data: ProjectExport): Promise<void> {
+    const parsed = projectExportSchema.parse(data);
+    const storage = getStorage();
+
+    if (!storage) {
+      throw new Error(browserOnlyRepositoryMessage);
+    }
+
+    const newId = crypto.randomUUID();
+    const importedProject = writingProjectSchema.parse({
+      ...parsed.project,
+      id: newId,
+      title: `${parsed.project.title} (imported)`,
+      scenes: Object.fromEntries(
+        Object.entries(parsed.project.scenes).map(([, scene]) => [
+          scene.id,
+          { ...scene, projectId: newId },
+        ]),
+      ),
+      chapters: Object.fromEntries(
+        Object.entries(parsed.project.chapters).map(([id, chapter]) => [
+          id,
+          { ...chapter, projectId: newId },
+        ]),
+      ),
+    });
+
+    const projectStorage = this.readProjectStorage();
+    this.writeProjectStorage({
+      version: PROJECT_STORAGE_VERSION,
+      projects: sortProjectsByUpdatedAt([importedProject, ...projectStorage.projects]),
+    });
+
+    if (parsed.bible) {
+      storage.setItem(`ainkwell:projects:${newId}:bible:v1`, JSON.stringify(parsed.bible));
+    }
+    if (parsed.sessions) {
+      storage.setItem(`ainkwell:projects:${newId}:sessions:v1`, JSON.stringify(parsed.sessions));
+    }
   }
 
   public async moveSceneToChapter(input: MoveSceneToChapterInput): Promise<void> {
