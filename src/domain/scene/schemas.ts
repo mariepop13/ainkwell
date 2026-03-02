@@ -57,6 +57,8 @@ export const saveSceneInputSchema = z.object({
   content: sceneContentSchema,
   status: sceneStatusSchema,
   updatedAt: updatedAtSchema,
+  synopsis: z.string().max(300).optional(),
+  beats: z.array(sceneBeatSchema).max(20).optional(),
 });
 
 const legacySceneSchema = z.object({

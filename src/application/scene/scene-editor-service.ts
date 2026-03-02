@@ -2,6 +2,7 @@ import { ZodError } from 'zod';
 
 import { projectNotFoundCode, sceneNotFoundCode } from '@/data/project/local-project-repository';
 import type { ProjectRepository } from '@/domain/project/repository';
+import type { SceneBeat } from '@/domain/scene/schemas';
 import { maxSceneContentLength } from '@/domain/scene/schemas';
 import type { Scene, SceneStatus, SceneSummary } from '@/domain/scene/types';
 
@@ -16,6 +17,8 @@ type SaveSceneInput = {
   content: string;
   status: SceneStatus;
   updatedAt: string;
+  synopsis?: string;
+  beats?: SceneBeat[];
 };
 
 type CreateSceneInput = {
