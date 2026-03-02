@@ -4,6 +4,7 @@ import type {
   CreateProjectInput,
   MoveSceneToChapterInput,
   ProjectChapter,
+  ProjectExport,
   UpdateProjectInput,
   WritingProject,
 } from '@/domain/project/types';
@@ -35,4 +36,6 @@ export interface ProjectRepository {
     direction: 'up' | 'down';
   }): Promise<void>;
   moveSceneToChapter(input: MoveSceneToChapterInput): Promise<void>;
+  exportProject(projectId: string): Promise<ProjectExport>;
+  importProject(data: ProjectExport): Promise<void>;
 }
