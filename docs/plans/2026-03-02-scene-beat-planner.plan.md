@@ -1,26 +1,29 @@
 ---
 name: Scene Beat Planner
 overview: Add a synopsis field and beat cards per scene so writers can plan scenes before writing them — the structured data foundation for future AI assistance.
+status: done
+merged: "2026-03-02"
+pr: 12
 todos:
   - id: 1
     content: "Extend Scene domain type with synopsis and beats fields"
-    status: pending
+    status: done
     dependencies: []
   - id: 2
     content: "Update LocalProjectRepository to persist synopsis/beats"
-    status: pending
+    status: done
     dependencies: [1]
   - id: 3
     content: "Update SceneEditorService to pass through synopsis/beats"
-    status: pending
+    status: done
     dependencies: [2]
   - id: 4
     content: "Build SceneBeatPanel component for scene editor"
-    status: pending
+    status: done
     dependencies: [3]
   - id: 5
     content: "Add inline synopsis to chapter outline panel"
-    status: pending
+    status: done
     dependencies: [3]
 ---
 

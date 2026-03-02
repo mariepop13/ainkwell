@@ -1,18 +1,20 @@
 ---
 name: Codex Context System
 overview: When a scene is open in the editor, automatically detect which story bible entities are mentioned in the content and surface their summaries — the context injection infrastructure for future AI assistance.
+status: in-progress
+pr: 13
 todos:
   - id: 1
     content: "Build useCodexContext hook: scans scene content for entity name matches"
-    status: pending
+    status: done
     dependencies: []
   - id: 2
     content: "Build CodexContextPanel component to display matched entities"
-    status: pending
+    status: done
     dependencies: [1]
   - id: 3
     content: "Integrate panel into scene editor shell"
-    status: pending
+    status: done
     dependencies: [2]
 ---
 
