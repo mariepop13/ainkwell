@@ -37,6 +37,7 @@ export function DailyProgress({ progress, dailyGoal }: DailyProgressProps): Reac
             className="h-full rounded-full bg-primary transition-all"
             style={{ width: `${percentage}%` }}
             role="progressbar"
+            aria-label="Daily writing progress"
             aria-valuenow={progress.wordsWritten}
             aria-valuemin={0}
             aria-valuemax={dailyGoal}
