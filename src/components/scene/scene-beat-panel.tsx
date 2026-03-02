@@ -25,7 +25,7 @@ export function SceneBeatPanel({ synopsis, beats, onSynopsisChange, onBeatsChang
   const [isOpen, setIsOpen] = useState(false);
 
   function addBeat(): void {
-    onBeatsChange([...beats, { id: crypto.randomUUID(), content: '', type: 'setup' }]);
+    onBeatsChange([...beats, { id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`, content: '', type: 'setup' }]);
   }
 
   function updateBeat(id: string, changes: Partial<SceneBeat>): void {
