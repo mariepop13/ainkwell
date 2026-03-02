@@ -1,6 +1,26 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
+import { Inter, Lora, Playfair_Display } from 'next/font/google';
+import Script from 'next/script';
+import { ThemeToggle } from '@/components/theme-toggle';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+});
+
+const lora = Lora({
+  subsets: ['latin'],
+  variable: '--font-lora',
+});
+
+const themeScript = `(function(){var storedTheme=localStorage.getItem('ainkwell:theme');var prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;if(storedTheme==='dark'||(storedTheme!=='light'&&prefersDark)){document.documentElement.classList.add('dark')}})()`;
 
 export const metadata: Metadata = {
   title: 'Ainkwell',
@@ -13,9 +33,17 @@ export default function RootLayout({
   children: ReactNode;
 }>): ReactElement {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${playfairDisplay.variable} ${lora.variable}`}
+    >
       <body suppressHydrationWarning className="font-body antialiased">
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         {children}
+        <ThemeToggle />
       </body>
     </html>
   );
