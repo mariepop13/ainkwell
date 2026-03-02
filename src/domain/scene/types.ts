@@ -1,3 +1,5 @@
+import type { SceneBeat } from '@/domain/scene/schemas';
+
 export type SceneStatus = 'draft' | 'revise' | 'final';
 
 export interface Scene {
@@ -7,6 +9,8 @@ export interface Scene {
   content: string;
   status: SceneStatus;
   updatedAt: string;
+  synopsis?: string;
+  beats?: SceneBeat[];
 }
 
 export interface SceneSummary {

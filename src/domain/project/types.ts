@@ -1,3 +1,4 @@
+import type { SceneBeat } from '@/domain/scene/schemas';
 import type { SceneStatus } from '@/domain/scene/types';
 
 export type ProjectStats = {
@@ -18,6 +19,8 @@ export type ProjectScene = {
   content: string;
   status: SceneStatus;
   updatedAt: string;
+  synopsis?: string;
+  beats?: SceneBeat[];
 };
 
 export type ProjectChapter = {

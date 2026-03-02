@@ -49,7 +49,7 @@ function SceneRow({
   chapters,
   actions,
 }: {
-  scene: { id: string; title: string; status: SceneStatus; updatedAt: string };
+  scene: { id: string; title: string; status: SceneStatus; updatedAt: string; synopsis?: string };
   chapterId: string;
   projectId: string;
   chapters: ChapterSummary[];
@@ -57,7 +57,12 @@ function SceneRow({
 }): ReactElement {
   return (
     <div className="flex items-center gap-3 py-1.5 pl-4 text-sm">
-      <span className="flex-1 truncate text-muted-foreground">{scene.title}</span>
+      <span className="flex flex-col flex-1 min-w-0">
+        <span className="truncate text-muted-foreground">{scene.title}</span>
+        {scene.synopsis ? (
+          <span className="truncate text-xs text-muted-foreground/60">{scene.synopsis}</span>
+        ) : null}
+      </span>
       <span className="text-xs text-muted-foreground">{formatProjectDate(scene.updatedAt)}</span>
       <span className="text-xs text-muted-foreground">{statusLabel[scene.status]}</span>
       {chapters.length > 1 ? (

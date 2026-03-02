@@ -9,6 +9,7 @@ import {
   type SceneEditorServicePort,
 } from '@/application/scene/scene-editor-service';
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
+import { SceneBeatPanel } from '@/components/scene/scene-beat-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
 import { WritingSessionContext } from '@/context/writing-session-context';
@@ -192,17 +193,25 @@ function SceneEditorLoadedView(props: SceneEditorLoadedViewProps): ReactElement 
         onStop={props.onSessionStop}
       />
 
-      <section className="flex-1 rounded-xl border bg-card p-4 text-card-foreground">
-        <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
-          Markdown content
-        </label>
-        <textarea
-          id="scene-content"
-          value={props.sceneEditor.content}
-          onChange={(event) => props.sceneEditor.setContent(event.target.value)}
-          className="min-h-[60vh] w-full resize-y rounded-md border bg-background p-3 font-mono text-sm"
+      <div className="flex-1 rounded-xl border overflow-hidden">
+        <SceneBeatPanel
+          synopsis={props.sceneEditor.synopsis}
+          beats={props.sceneEditor.beats}
+          onSynopsisChange={props.sceneEditor.setSynopsis}
+          onBeatsChange={props.sceneEditor.setBeats}
         />
-      </section>
+        <section className="bg-card p-4 text-card-foreground">
+          <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
+            Markdown content
+          </label>
+          <textarea
+            id="scene-content"
+            value={props.sceneEditor.content}
+            onChange={(event) => props.sceneEditor.setContent(event.target.value)}
+            className="min-h-[60vh] w-full resize-y rounded-md border bg-background p-3 font-mono text-sm"
+          />
+        </section>
+      </div>
 
       <SceneEditorNavigation
         projectId={props.projectId}

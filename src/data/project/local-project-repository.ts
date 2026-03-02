@@ -251,6 +251,8 @@ export class LocalProjectRepository implements ProjectRepository {
     content: string;
     status: Scene['status'];
     updatedAt: string;
+    synopsis?: string;
+    beats?: Scene['beats'];
   }): Promise<Scene> {
     const parsedInput = saveSceneInputSchema.parse(input);
     const projectStorage = this.readProjectStorage();
@@ -266,6 +268,8 @@ export class LocalProjectRepository implements ProjectRepository {
       content: parsedInput.content,
       status: parsedInput.status,
       updatedAt: parsedInput.updatedAt,
+      ...(parsedInput.synopsis !== undefined ? { synopsis: parsedInput.synopsis } : {}),
+      ...(parsedInput.beats !== undefined ? { beats: parsedInput.beats } : {}),
     });
 
     const updatedProject = withRecalculatedStats(

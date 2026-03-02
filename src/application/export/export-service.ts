@@ -33,7 +33,8 @@ function buildMarkdown(project: WritingProject): string {
     for (const sceneId of chapter.sceneOrder) {
       const scene = project.scenes[sceneId];
       if (!scene) continue;
-      lines.push(`### ${scene.title}`, '', scene.content.trim(), '', '---', '');
+      const synopsisLine = scene.synopsis ? `*${scene.synopsis}*\n` : '';
+      lines.push(`### ${scene.title}`, '', synopsisLine + scene.content.trim(), '', '---', '');
     }
   }
 
