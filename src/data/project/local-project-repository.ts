@@ -486,7 +486,7 @@ export class LocalProjectRepository implements ProjectRepository {
       throw new Error(browserOnlyRepositoryMessage);
     }
 
-    const newId = crypto.randomUUID();
+    const newId = generateProjectId();
     const importedProject = writingProjectSchema.parse({
       ...parsed.project,
       id: newId,
