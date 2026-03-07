@@ -7,7 +7,9 @@ import {
   projectExportSchema,
   projectIdSchema,
   projectStorageSchema,
+  reorderSceneInputSchema,
   updateProjectInputSchema,
+  updateSceneInlineInputSchema,
   writingProjectSchema,
   type ProjectStorage,
 } from '@/domain/project/schemas';
@@ -18,7 +20,10 @@ import type {
   MoveSceneToChapterInput,
   ProjectChapter,
   ProjectExport,
+  ProjectScene,
+  ReorderSceneInput,
   UpdateProjectInput,
+  UpdateSceneInlineInput,
   WritingProject,
 } from '@/domain/project/types';
 import { bibleStorageSchema } from '@/domain/bible/schemas';
@@ -461,6 +466,94 @@ export class LocalProjectRepository implements ProjectRepository {
         currentProject.id === input.projectId ? updatedProject : currentProject,
       ),
     );
+  }
+
+  public async reorderScene(input: ReorderSceneInput): Promise<void> {
+    const validInput = reorderSceneInputSchema.parse(input);
+    const projectStorage = this.readProjectStorage();
+    const project = this.getProjectOrThrow(projectStorage.projects, validInput.projectId);
+
+    const targetChapter = project.chapters[validInput.targetChapterId];
+    if (!targetChapter) {
+      throw asChapterNotFound();
+    }
+
+    const sourceChapterId = project.chapterOrder.find((chapterId) =>
+      project.chapters[chapterId]?.sceneOrder.includes(validInput.sceneId),
+    );
+
+    if (!sourceChapterId) {
+      throw new Error(sceneNotFoundCode);
+    }
+
+    const sourceChapter = project.chapters[sourceChapterId]!;
+    const filteredSourceOrder = sourceChapter.sceneOrder.filter((id) => id !== validInput.sceneId);
+    const targetOrder =
+      sourceChapterId === validInput.targetChapterId
+        ? filteredSourceOrder
+        : [...targetChapter.sceneOrder];
+    const clampedIndex = Math.min(validInput.targetIndex, targetOrder.length);
+    targetOrder.splice(clampedIndex, 0, validInput.sceneId);
+
+    const updatedSourceChapter = { ...sourceChapter, sceneOrder: filteredSourceOrder };
+    const updatedTargetChapter = { ...targetChapter, sceneOrder: targetOrder };
+    const updatedChapters =
+      sourceChapterId === validInput.targetChapterId
+        ? { ...project.chapters, [validInput.targetChapterId]: updatedTargetChapter }
+        : {
+            ...project.chapters,
+            [sourceChapterId]: updatedSourceChapter,
+            [validInput.targetChapterId]: updatedTargetChapter,
+          };
+
+    const updatedProject = withRecalculatedStats(
+      writingProjectSchema.parse({
+        ...project,
+        updatedAt: new Date().toISOString(),
+        chapters: updatedChapters,
+      }),
+    );
+
+    this.writeProjects(
+      projectStorage.projects.map((currentProject) =>
+        currentProject.id === validInput.projectId ? updatedProject : currentProject,
+      ),
+    );
+  }
+
+  public async updateSceneInline(input: UpdateSceneInlineInput): Promise<ProjectScene> {
+    const validInput = updateSceneInlineInputSchema.parse(input);
+    const projectStorage = this.readProjectStorage();
+    const project = this.getProjectOrThrow(projectStorage.projects, validInput.projectId);
+    const existingScene = project.scenes[validInput.sceneId];
+
+    if (!existingScene || existingScene.projectId !== validInput.projectId) {
+      throw new Error(sceneNotFoundCode);
+    }
+
+    const updatedScene: ProjectScene = {
+      ...existingScene,
+      ...(validInput.title !== undefined ? { title: validInput.title } : {}),
+      ...(validInput.status !== undefined ? { status: validInput.status } : {}),
+      ...(validInput.synopsis !== undefined ? { synopsis: validInput.synopsis } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedProject = withRecalculatedStats(
+      writingProjectSchema.parse({
+        ...project,
+        updatedAt: updatedScene.updatedAt,
+        scenes: { ...project.scenes, [validInput.sceneId]: updatedScene },
+      }),
+    );
+
+    this.writeProjects(
+      projectStorage.projects.map((currentProject) =>
+        currentProject.id === validInput.projectId ? updatedProject : currentProject,
+      ),
+    );
+
+    return updatedScene;
   }
 
   public async exportProject(projectId: string): Promise<ProjectExport> {
