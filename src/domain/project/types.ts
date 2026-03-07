@@ -88,3 +88,24 @@ export type ProjectExport = {
   bible: unknown | null;
   sessions: unknown | null;
 };
+
+export type ManuscriptScene = {
+  id: string;
+  title: string;
+  content: string;
+  wordCount: number;
+};
+
+export type ManuscriptChapter = {
+  id: string;
+  title: string;
+  chapterIndex: number;
+  scenes: ManuscriptScene[];
+  wordCount: number;
+};
+
+export type Manuscript = {
+  projectTitle: string;
+  chapters: ManuscriptChapter[];
+  totalWordCount: number;
+};
