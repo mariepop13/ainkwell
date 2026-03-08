@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { memo, useCallback, useMemo, type ReactElement } from 'react';
 
+import { AiSettingsService } from '@/application/ai/ai-settings-service';
+import { SceneDraftService } from '@/application/ai/scene-draft-service';
 import { BibleService } from '@/application/bible/bible-service';
 import { createBibleService as createDefaultBibleService } from '@/application/bible/create-bible-service';
 import {
@@ -11,25 +13,29 @@ import {
 } from '@/application/scene/scene-editor-service';
 import { WritingSessionService } from '@/application/writing-session/writing-session-service';
 import { CodexContextPanel } from '@/components/scene/codex-context-panel';
+import { GenerateDraftButton } from '@/components/scene/generate-draft-button';
 import { SceneBeatPanel } from '@/components/scene/scene-beat-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
 import { useWritingSessionActions, useWritingSessionTimer } from '@/context/writing-session-context';
-
+import { LocalAiSettingsRepository } from '@/data/ai/local-ai-settings-repository';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import type { BibleEntity } from '@/domain/bible/types';
 import type { SceneBeat } from '@/domain/scene/schemas';
 import { useCodexContext } from '@/hooks/use-codex-context';
+import { useSceneDraft } from '@/hooks/use-scene-draft';
 import { useSceneEditor, type UseSceneEditorResult } from '@/hooks/use-scene-editor';
 import { useWritingSession } from '@/hooks/use-writing-session';
 
 type SceneEditorShellProps = {
   projectId: string;
   sceneId: string;
+  language?: string;
   service?: SceneEditorServicePort;
   writingService?: WritingSessionService;
   bibleService?: BibleService;
+  draftService?: SceneDraftService;
 };
 
 const createSceneEditorService = (): SceneEditorServicePort =>
@@ -40,14 +46,18 @@ const createWritingSessionService = (): WritingSessionService =>
 
 const createBibleService = (): BibleService => createDefaultBibleService();
 
-function useShellServices(props: Pick<SceneEditorShellProps, 'service' | 'writingService' | 'bibleService'>) {
+const createDraftService = (): SceneDraftService =>
+  new SceneDraftService(new AiSettingsService(new LocalAiSettingsRepository()));
+
+function useShellServices(props: Pick<SceneEditorShellProps, 'service' | 'writingService' | 'bibleService' | 'draftService'>) {
   const service = useMemo(() => props.service ?? createSceneEditorService(), [props.service]);
   const writingService = useMemo(
     () => props.writingService ?? createWritingSessionService(),
     [props.writingService],
   );
   const bibleService = useMemo(() => props.bibleService ?? createBibleService(), [props.bibleService]);
-  return { service, writingService, bibleService };
+  const draftService = useMemo(() => props.draftService ?? createDraftService(), [props.draftService]);
+  return { service, writingService, bibleService, draftService };
 }
 
 type SceneStateViewProps = {
@@ -187,6 +197,11 @@ type SceneContentSectionProps = {
   beats: SceneBeat[];
   onSynopsisChange: (value: string) => void;
   onBeatsChange: (beats: SceneBeat[]) => void;
+  isGenerating: boolean;
+  generateError: string | null;
+  canGenerate: boolean;
+  onGenerate: () => void;
+  onClearGenerateError: () => void;
 };
 
 const SceneContentSection = memo(function SceneContentSection({
@@ -197,6 +212,11 @@ const SceneContentSection = memo(function SceneContentSection({
   beats,
   onSynopsisChange,
   onBeatsChange,
+  isGenerating,
+  generateError,
+  canGenerate,
+  onGenerate,
+  onClearGenerateError,
 }: SceneContentSectionProps): ReactElement {
   return (
     <section className="flex flex-1 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground">
@@ -208,9 +228,18 @@ const SceneContentSection = memo(function SceneContentSection({
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col p-4">
-          <label htmlFor="scene-content" className="mb-2 block text-sm font-medium">
-            Markdown content
-          </label>
+          <div className="mb-2 flex items-center justify-between">
+            <label htmlFor="scene-content" className="block text-sm font-medium">
+              Markdown content
+            </label>
+            <GenerateDraftButton
+              isGenerating={isGenerating}
+              generateError={generateError}
+              canGenerate={canGenerate}
+              onGenerate={onGenerate}
+              onClearError={onClearGenerateError}
+            />
+          </div>
           <textarea
             id="scene-content"
             value={content}
@@ -245,10 +274,12 @@ function SessionTimerConnector({ onStart, onStop, fallbackIsRunning, fallbackEla
 
 type SceneEditorLoadedViewProps = {
   projectId: string;
+  language: string;
   sceneEditor: UseSceneEditorResult;
   onSessionStart: () => void;
   onSessionStop: () => Promise<void>;
   bibleService: BibleService;
+  draftService: SceneDraftService;
   fallbackIsRunning: boolean;
   fallbackElapsedSeconds: number;
 };
@@ -258,6 +289,16 @@ const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEd
     projectId: props.projectId,
     content: props.sceneEditor.content,
     service: props.bibleService,
+  });
+
+  const { isGenerating, generateError, canGenerate, generate, clearError } = useSceneDraft({
+    scene: props.sceneEditor.scene,
+    synopsis: props.sceneEditor.synopsis,
+    beats: props.sceneEditor.beats,
+    entities: matchedEntities,
+    language: props.language,
+    service: props.draftService,
+    onDraftReady: props.sceneEditor.setContent,
   });
 
   if (!props.sceneEditor.scene) return getSceneNotLoadedView();
@@ -291,6 +332,11 @@ const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEd
         beats={props.sceneEditor.beats}
         onSynopsisChange={props.sceneEditor.setSynopsis}
         onBeatsChange={props.sceneEditor.setBeats}
+        isGenerating={isGenerating}
+        generateError={generateError}
+        canGenerate={canGenerate}
+        onGenerate={() => void generate()}
+        onClearGenerateError={clearError}
       />
 
       <SceneEditorNavigation
@@ -303,7 +349,7 @@ const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEd
 });
 
 export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
-  const { service, writingService, bibleService } = useShellServices(props);
+  const { service, writingService, bibleService, draftService } = useShellServices(props);
   const contextActions = useWritingSessionActions();
   const localSession = useWritingSession({ projectId: props.projectId, service: writingService });
 
@@ -335,10 +381,12 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
   return (
     <SceneEditorLoadedView
       projectId={props.projectId}
+      language={props.language ?? 'en'}
       sceneEditor={sceneEditor}
       onSessionStart={startSession}
       onSessionStop={handleSessionStop}
       bibleService={bibleService}
+      draftService={draftService}
       fallbackIsRunning={localSession.isRunning}
       fallbackElapsedSeconds={localSession.elapsedSeconds}
     />
