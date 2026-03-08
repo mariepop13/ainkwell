@@ -6,7 +6,10 @@ import type {
   MoveSceneToChapterInput,
   ProjectChapter,
   ProjectExport,
+  ProjectScene,
+  ReorderSceneInput,
   UpdateProjectInput,
+  UpdateSceneInlineInput,
   WritingProject,
 } from '@/domain/project/types';
 import type { Scene, SceneStatus, SceneSummary } from '@/domain/scene/types';
@@ -39,6 +42,8 @@ export interface ProjectRepository {
     direction: 'up' | 'down';
   }): Promise<void>;
   moveSceneToChapter(input: MoveSceneToChapterInput): Promise<void>;
+  reorderScene(input: ReorderSceneInput): Promise<void>;
+  updateSceneInline(input: UpdateSceneInlineInput): Promise<ProjectScene>;
   exportProject(projectId: string): Promise<ProjectExport>;
   importProject(data: ProjectExport): Promise<void>;
 }

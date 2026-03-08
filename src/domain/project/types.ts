@@ -81,6 +81,21 @@ export type UpdateProjectInput = {
   stats?: Partial<ProjectStats>;
 };
 
+export type ReorderSceneInput = {
+  projectId: string;
+  sceneId: string;
+  targetChapterId: string;
+  targetIndex: number;
+};
+
+export type UpdateSceneInlineInput = {
+  projectId: string;
+  sceneId: string;
+  title?: string;
+  status?: SceneStatus;
+  synopsis?: string;
+};
+
 export type ProjectExport = {
   version: 1;
   exportedAt: string;
