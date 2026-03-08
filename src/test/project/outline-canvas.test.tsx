@@ -73,6 +73,7 @@ const defaultProps = {
   onDragOver: vi.fn(),
   onDrop: vi.fn(),
   onDragLeave: vi.fn(),
+  onKeyboardReorder: vi.fn(),
   onCreateScene: vi.fn().mockResolvedValue(undefined),
   onAddChapter: vi.fn().mockResolvedValue(undefined),
 };

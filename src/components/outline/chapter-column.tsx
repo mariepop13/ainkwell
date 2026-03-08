@@ -34,6 +34,7 @@ type ChapterColumnProps = {
   onDrop: (targetChapterId: string, targetIndex: number) => void;
   onDragLeave: () => void;
   onCreateScene: (chapterId: string, title: string) => Promise<void>;
+  onKeyboardReorder: (sceneId: string, direction: 'up' | 'down') => void;
 };
 
 function resolveDropIndex(event: DragEvent<HTMLElement>, sceneCount: number): number {
@@ -60,6 +61,7 @@ export function ChapterColumn({
   onDrop,
   onDragLeave,
   onCreateScene,
+  onKeyboardReorder,
 }: ChapterColumnProps): ReactElement {
   const [isAddingScene, setIsAddingScene] = useState(false);
   const [nextSceneIndex, setNextSceneIndex] = useState(scenes.length + 1);
@@ -91,7 +93,7 @@ export function ChapterColumn({
       onDragLeave={onDragLeave}
     >
       <header className="px-3 pt-3 pb-2 border-b">
-        <h3 className="text-sm font-semibold truncate">{chapter.title}</h3>
+        <h2 className="text-sm font-semibold truncate">{chapter.title}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           {scenes.length} {scenes.length === 1 ? 'scene' : 'scenes'} · {chapter.wordCount.toLocaleString()} w
         </p>
@@ -111,6 +113,7 @@ export function ChapterColumn({
               onInlineEdit={onInlineEdit}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
+              onKeyboardReorder={(direction) => { onKeyboardReorder(scene.id, direction); }}
             />
           </li>
         ))}

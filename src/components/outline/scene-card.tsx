@@ -1,4 +1,4 @@
-import type { DragEvent, ReactElement } from 'react';
+import type { DragEvent, KeyboardEvent, ReactElement } from 'react';
 import { GripVertical } from 'lucide-react';
 
 import type { ProjectScene } from '@/domain/project/types';
@@ -30,6 +30,7 @@ type SceneCardProps = {
   onInlineEdit: (sceneId: string, patch: InlineEditPatch) => void;
   onDragStart: (info: DragInfo) => void;
   onDragEnd: () => void;
+  onKeyboardReorder: (direction: 'up' | 'down') => void;
 };
 
 const SYNOPSIS_MAX_DISPLAY_LENGTH = 80;
@@ -52,10 +53,25 @@ export function SceneCard({
   onInlineEdit,
   onDragStart,
   onDragEnd,
+  onKeyboardReorder,
 }: SceneCardProps): ReactElement {
   const handleDragStart = (event: DragEvent<HTMLDivElement>): void => {
     event.dataTransfer.effectAllowed = 'move';
     onDragStart({ sceneId: scene.id, sourceChapterId: chapterId, sourceIndex: index });
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Enter' && !isEditing) {
+      onEditStart(scene.id);
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      onKeyboardReorder('up');
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      onKeyboardReorder('down');
+    }
   };
 
   return (
@@ -67,8 +83,8 @@ export function SceneCard({
       onClick={() => { if (!isEditing) { onEditStart(scene.id); } }}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' && !isEditing) { onEditStart(scene.id); } }}
-      aria-label={`Scene: ${scene.title}`}
+      onKeyDown={handleKeyDown}
+      aria-label={`Scene: ${scene.title}. Press Enter to edit, Arrow Up or Down to reorder.`}
       className="rounded-md border bg-card p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors"
     >
       <div className="flex items-start gap-2">

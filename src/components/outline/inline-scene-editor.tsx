@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { FocusEvent, ReactElement } from 'react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { ProjectScene } from '@/domain/project/types';
 import type { SceneStatus } from '@/domain/scene/types';
@@ -31,6 +31,18 @@ export function InlineSceneEditor({
   onClose,
 }: InlineSceneEditorProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsidePointer = (event: PointerEvent): void => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointer, true);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointer, true);
+    };
+  }, [onClose]);
 
   const handleBlur = (event: FocusEvent<HTMLDivElement>): void => {
     const relatedTarget = event.relatedTarget as Node | null;

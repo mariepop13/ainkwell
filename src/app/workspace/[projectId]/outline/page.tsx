@@ -90,6 +90,7 @@ function OutlinePageShell({ projectId }: { projectId: string }): ReactElement {
           onDragOver={canvas.handleDragOver}
           onDrop={canvas.handleDrop}
           onDragLeave={canvas.handleDragLeave}
+          onKeyboardReorder={canvas.handleKeyboardReorder}
           onCreateScene={canvas.handleCreateScene}
           onAddChapter={canvas.handleAddChapter}
         />

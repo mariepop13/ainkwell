@@ -28,6 +28,7 @@ type OutlineCanvasProps = {
   onDragLeave: () => void;
   onCreateScene: (chapterId: string, title: string) => Promise<void>;
   onAddChapter: (title: string) => Promise<void>;
+  onKeyboardReorder: (sceneId: string, chapterId: string, direction: 'up' | 'down') => void;
 };
 
 function getScenesForChapter(project: WritingProject, chapterId: string): ProjectScene[] {
@@ -91,6 +92,7 @@ export function OutlineCanvas({
   onDragLeave,
   onCreateScene,
   onAddChapter,
+  onKeyboardReorder,
 }: OutlineCanvasProps): ReactElement {
   if (project.chapterOrder.length === 0) {
     return (
@@ -134,6 +136,7 @@ export function OutlineCanvas({
               onDrop={onDrop}
               onDragLeave={onDragLeave}
               onCreateScene={onCreateScene}
+              onKeyboardReorder={(sceneId, direction) => { onKeyboardReorder(sceneId, chapterId, direction); }}
             />
           );
         })}

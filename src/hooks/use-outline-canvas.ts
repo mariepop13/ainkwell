@@ -40,6 +40,7 @@ export type UseOutlineCanvasResult = {
   handleDragOver: (chapterId: string, index: number) => void;
   handleDrop: (targetChapterId: string, targetIndex: number) => void;
   handleDragLeave: () => void;
+  handleKeyboardReorder: (sceneId: string, chapterId: string, direction: 'up' | 'down') => void;
   handleCreateScene: (chapterId: string, title: string) => Promise<void>;
   handleAddChapter: (title: string) => Promise<void>;
 };
@@ -230,6 +231,37 @@ export function useOutlineCanvas({
     setDropTarget(null);
   }, []);
 
+  const handleKeyboardReorder = useCallback(
+    (sceneId: string, chapterId: string, direction: 'up' | 'down'): void => {
+      if (!project) {
+        return;
+      }
+      const chapter = project.chapters[chapterId];
+      if (!chapter) {
+        return;
+      }
+      const currentIndex = chapter.sceneOrder.indexOf(sceneId);
+      if (currentIndex === -1) {
+        return;
+      }
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= chapter.sceneOrder.length) {
+        return;
+      }
+
+      const previousProject = project;
+      setProject(applyOptimisticReorder(project, sceneId, chapterId, chapterId, targetIndex));
+
+      void chapterService
+        .reorderScene({ projectId, sceneId, targetChapterId: chapterId, targetIndex })
+        .catch((error) => {
+          setProject(previousProject);
+          setActionError(toErrorMessage(error, 'Failed to reorder scene.'));
+        });
+    },
+    [chapterService, project, projectId],
+  );
+
   const handleCreateScene = useCallback(
     async (chapterId: string, title: string): Promise<void> => {
       try {
@@ -269,6 +301,7 @@ export function useOutlineCanvas({
     handleDragOver,
     handleDrop,
     handleDragLeave,
+    handleKeyboardReorder,
     handleCreateScene,
     handleAddChapter,
   };
