@@ -21,11 +21,17 @@ export class AiSettingsService {
   public saveKey(key: string): void {
     const trimmedKey = key.trim();
     if (!trimmedKey) throw new AiSettingsError('API key cannot be empty');
-    this.repository.save({ openRouterApiKey: trimmedKey });
+    const current = this.repository.load();
+    this.repository.save({ openRouterApiKey: trimmedKey, selectedModel: current?.selectedModel });
   }
 
   public clearKey(): void {
-    this.repository.clear();
+    const current = this.repository.load();
+    if (current?.selectedModel) {
+      this.repository.save({ openRouterApiKey: '', selectedModel: current.selectedModel });
+    } else {
+      this.repository.clear();
+    }
   }
 
   public hasKey(): boolean {

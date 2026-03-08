@@ -48,6 +48,37 @@ describe('AiSettingsService', () => {
   });
 });
 
+describe('AiSettingsService key/model preservation', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('preserves selectedModel when saving a new key', () => {
+    const service = createService();
+    service.saveKey('sk-first');
+    service.saveModel('anthropic/claude-3-5-sonnet');
+    service.saveKey('sk-second');
+    expect(service.getSelectedModel()).toBe('anthropic/claude-3-5-sonnet');
+  });
+
+  it('preserves selectedModel when clearing the key', () => {
+    const service = createService();
+    service.saveKey('sk-test-key');
+    service.saveModel('openai/gpt-4o');
+    service.clearKey();
+    expect(service.hasKey()).toBe(false);
+    expect(service.getSelectedModel()).toBe('openai/gpt-4o');
+  });
+
+  it('falls back to clear() when no selectedModel is saved', () => {
+    const service = createService();
+    service.saveKey('sk-test-key');
+    service.clearKey();
+    expect(service.hasKey()).toBe(false);
+    expect(service.loadSettings()).toBeNull();
+  });
+});
+
 describe('AiSettingsService model selection', () => {
   beforeEach(() => {
     window.localStorage.clear();
