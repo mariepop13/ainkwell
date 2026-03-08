@@ -48,7 +48,12 @@ export async function exchangeAuthCodeForApiKey(
     throw new Error('Session data not found. Please restart the connection flow.');
   }
 
-  const pkce: PKCEPair = JSON.parse(storedPKCE);
+  let pkce: PKCEPair;
+  try {
+    pkce = JSON.parse(storedPKCE) as PKCEPair;
+  } catch {
+    throw new Error('Invalid session data. Please restart the connection flow.');
+  }
 
   const response = await fetch(`${OPENROUTER_AUTH_BASE_URL}/api/v1/auth/keys`, {
     method: 'POST',
@@ -65,6 +70,10 @@ export async function exchangeAuthCodeForApiKey(
   }
 
   const data = (await response.json()) as OAuthExchangeResponse;
+
+  if (typeof data.key !== 'string' || !data.key) {
+    throw new Error('Invalid response from OpenRouter. Please try again.');
+  }
 
   sessionStorage.removeItem(STORAGE_KEY_PKCE);
   sessionStorage.removeItem(STORAGE_KEY_STATE);
