@@ -432,6 +432,25 @@ function ProjectStoryBibleSection({ projectId }: { projectId: string }): ReactEl
   );
 }
 
+function ManuscriptSection({ projectId }: { projectId: string }): ReactElement {
+  return (
+    <section className="rounded-lg border p-4">
+      <h2 className="text-2xl font-headline font-semibold">Manuscript</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Read your entire novel as a continuous document.
+      </p>
+      <div className="mt-3">
+        <Link
+          className="inline-flex rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          href={`/workspace/${projectId}/manuscript`}
+        >
+          Open Manuscript
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function ProjectWritingGoalsSection({ projectId }: { projectId: string }): ReactElement {
   return (
     <section className="rounded-lg border p-4">
@@ -476,6 +495,7 @@ function ProjectDetailView({
       <ChaptersSection projectId={projectId} project={project} chapterActions={chapterActions} />
       <ProjectOutlineCanvasSection projectId={projectId} />
       <ProjectStoryBibleSection projectId={projectId} />
+      <ManuscriptSection projectId={projectId} />
       <ProjectWritingGoalsSection projectId={projectId} />
       <ExportImportPanel exportService={exportService} projectId={projectId} projectTitle={project.title} />
       <Link className="text-sm font-medium text-primary underline" href="/workspace">
