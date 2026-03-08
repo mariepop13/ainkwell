@@ -40,7 +40,7 @@ export async function exchangeAuthCodeForApiKey(
   const storedState = sessionStorage.getItem(STORAGE_KEY_STATE);
   const storedPKCE = sessionStorage.getItem(STORAGE_KEY_PKCE);
 
-  if (state && storedState !== state) {
+  if (!state || !storedState || storedState !== state) {
     throw new Error('Invalid state parameter. Please restart the connection flow.');
   }
 

@@ -33,7 +33,13 @@ export function useOAuthCallback(): UseOAuthCallbackResult {
       const error = searchParams.get('error');
 
       if (error) {
-        setErrorMessage(error);
+        const knownErrors: Record<string, string> = {
+          access_denied: 'Access was denied. Please try again.',
+          invalid_scope: 'Invalid permissions requested.',
+          server_error: 'OpenRouter encountered a server error. Please try again later.',
+          temporarily_unavailable: 'OpenRouter is temporarily unavailable. Please try again later.',
+        };
+        setErrorMessage(knownErrors[error] ?? 'Connection failed. Please try again.');
         setStatus('error');
         return;
       }
