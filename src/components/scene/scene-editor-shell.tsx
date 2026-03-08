@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { memo, useCallback, useMemo, type ReactElement } from 'react';
 
-import { AiSettingsService } from '@/application/ai/ai-settings-service';
+import { createSceneDraftService } from '@/application/ai/create-scene-draft-service';
 import { SceneDraftService } from '@/application/ai/scene-draft-service';
 import { BibleService } from '@/application/bible/bible-service';
 import { createBibleService as createDefaultBibleService } from '@/application/bible/create-bible-service';
@@ -18,7 +18,6 @@ import { SceneBeatPanel } from '@/components/scene/scene-beat-panel';
 import { SceneToolbar } from '@/components/scene/scene-toolbar';
 import { SessionTimer } from '@/components/writing-session/session-timer';
 import { useWritingSessionActions, useWritingSessionTimer } from '@/context/writing-session-context';
-import { LocalAiSettingsRepository } from '@/data/ai/local-ai-settings-repository';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import { LocalWritingSessionRepository } from '@/data/writing-session/local-writing-session-repository';
 import type { BibleEntity } from '@/domain/bible/types';
@@ -46,8 +45,7 @@ const createWritingSessionService = (): WritingSessionService =>
 
 const createBibleService = (): BibleService => createDefaultBibleService();
 
-const createDraftService = (): SceneDraftService =>
-  new SceneDraftService(new AiSettingsService(new LocalAiSettingsRepository()));
+const createDraftService = (): SceneDraftService => createSceneDraftService();
 
 function useShellServices(props: Pick<SceneEditorShellProps, 'service' | 'writingService' | 'bibleService' | 'draftService'>) {
   const service = useMemo(() => props.service ?? createSceneEditorService(), [props.service]);
@@ -298,7 +296,15 @@ const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEd
     entities: matchedEntities,
     language: props.language,
     service: props.draftService,
-    onDraftReady: props.sceneEditor.setContent,
+    onDraftReady: (draft: string) => {
+      if (
+        props.sceneEditor.content.trim() &&
+        !window.confirm('Replace the current scene content with the generated draft?')
+      ) {
+        return;
+      }
+      props.sceneEditor.setContent(draft);
+    },
   });
 
   if (!props.sceneEditor.scene) return getSceneNotLoadedView();

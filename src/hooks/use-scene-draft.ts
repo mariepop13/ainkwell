@@ -55,7 +55,7 @@ export function useSceneDraft({
       if (result.state === 'success') {
         onDraftReady(result.draft);
       } else if (result.state === 'no-api-key') {
-        setGenerateError('Set your OpenRouter API key in project settings.');
+        setGenerateError('Set your OpenRouter API key in workspace AI settings.');
       } else {
         setGenerateError(result.message);
       }
