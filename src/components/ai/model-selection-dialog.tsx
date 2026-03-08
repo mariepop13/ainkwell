@@ -29,11 +29,16 @@ export function ModelSelectionDialog({
     void load();
   }, [load]);
 
+  const MAX_VISIBLE = 50;
+
   const filtered = models.filter(
     (m) =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.id.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const visible = filtered.slice(0, MAX_VISIBLE);
+  const hiddenCount = filtered.length - visible.length;
 
   function handleSelect(modelId: string): void {
     onSelect(modelId);
@@ -73,7 +78,7 @@ export function ModelSelectionDialog({
             <p className="text-sm text-muted-foreground text-center py-8">No models found.</p>
           ) : null}
           {!isLoading && !error
-            ? filtered.map((model) => (
+            ? visible.map((model) => (
                 <ModelCard
                   key={model.id}
                   model={model}
@@ -82,6 +87,11 @@ export function ModelSelectionDialog({
                 />
               ))
             : null}
+          {hiddenCount > 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              {hiddenCount} more models — refine your search to narrow results.
+            </p>
+          ) : null}
         </div>
 
         <div className="p-4 border-t flex justify-end">
