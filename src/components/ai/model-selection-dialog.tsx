@@ -44,12 +44,15 @@ export function ModelSelectionDialog({
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      aria-labelledby="model-selection-title"
       className="w-full max-w-xl rounded-xl border bg-card p-0 shadow-lg backdrop:bg-black/50"
     >
       <div className="flex flex-col max-h-[80vh]">
         <div className="p-4 border-b space-y-3">
-          <h2 className="text-lg font-headline font-semibold">Select model</h2>
+          <h2 id="model-selection-title" className="text-lg font-headline font-semibold">Select model</h2>
+          <label htmlFor="model-search" className="sr-only">Search models</label>
           <input
+            id="model-search"
             type="search"
             placeholder="Search models…"
             value={search}

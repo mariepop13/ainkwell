@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
 import type { AiSettingsService } from '@/application/ai/ai-settings-service';
@@ -18,11 +18,15 @@ export function AiSettingsPanel({ service }: Props): ReactElement {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showModelDialog, setShowModelDialog] = useState(false);
   const [selectedModel, setSelectedModel] = useState(() => service.getSelectedModel());
 
   useEffect(() => {
     setHasKey(service.hasKey());
+    return () => {
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    };
   }, [service]);
 
   async function handleSave(): Promise<void> {
@@ -45,7 +49,7 @@ export function AiSettingsPanel({ service }: Props): ReactElement {
       setHasKey(true);
       setKeyInput('');
       setSavedMessage(true);
-      setTimeout(() => setSavedMessage(false), 2000);
+      savedTimeoutRef.current = setTimeout(() => setSavedMessage(false), 2000);
     } catch (error) {
       if (error instanceof AiSettingsError) {
         setErrorMessage(error.message);
