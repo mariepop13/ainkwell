@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BibleService, BibleValidationError } from '@/application/bible/bible-service';
 import { createProjectService } from '@/application/project/project-service';
 import { LocalBibleRepository } from '@/data/bible/local-bible-repository';
@@ -285,9 +285,9 @@ function useEntitySelection(entities: BibleDataSnapshot['entities']): {
 
 function useRefreshTrigger(): () => void {
   const [, setDataRevision] = useState(0);
-  return () => {
+  return useCallback(() => {
     setDataRevision((currentRevision) => currentRevision + 1);
-  };
+  }, []);
 }
 
 function useRunBibleOperation(
