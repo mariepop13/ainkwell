@@ -2,6 +2,8 @@
 import { type ChangeEvent, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
+import type { ReactNode } from 'react';
+
 import { ExportService } from '@/application/export/export-service';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import type { ProjectExport } from '@/domain/project/types';
@@ -22,6 +24,7 @@ type WorkspacePageContentProps = {
   onCancelEdit: () => void;
   onUpdateProject: (projectId: string, values: ProjectFormValues) => Promise<void>;
   onDeleteProject: (projectId: string) => void;
+  aiSettingsPanel?: ReactNode;
 };
 
 function ImportProjectButton({ onSuccess }: { onSuccess: () => void }): ReactElement {
@@ -231,6 +234,7 @@ export function WorkspacePageContent({
   onCancelEdit,
   onUpdateProject,
   onDeleteProject,
+  aiSettingsPanel,
 }: WorkspacePageContentProps): ReactElement {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-4 py-10">
@@ -253,6 +257,7 @@ export function WorkspacePageContent({
           submitting={submitting}
         />
       </section>
+      {aiSettingsPanel}
     </main>
   );
 }
