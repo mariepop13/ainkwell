@@ -5,6 +5,9 @@ import type {
   CreateChapterInput,
   MoveSceneToChapterInput,
   ProjectChapter,
+  ProjectScene,
+  ReorderSceneInput,
+  UpdateSceneInlineInput,
 } from '@/domain/project/types';
 
 export interface ChapterService {
@@ -18,6 +21,8 @@ export interface ChapterService {
     direction: 'up' | 'down';
   }): Promise<void>;
   moveSceneToChapter(input: MoveSceneToChapterInput): Promise<void>;
+  reorderScene(input: ReorderSceneInput): Promise<void>;
+  updateSceneInline(input: UpdateSceneInlineInput): Promise<ProjectScene>;
 }
 
 class DefaultChapterService implements ChapterService {
@@ -55,6 +60,14 @@ class DefaultChapterService implements ChapterService {
 
   async moveSceneToChapter(input: MoveSceneToChapterInput): Promise<void> {
     return this.repository.moveSceneToChapter(input);
+  }
+
+  async reorderScene(input: ReorderSceneInput): Promise<void> {
+    return this.repository.reorderScene(input);
+  }
+
+  async updateSceneInline(input: UpdateSceneInlineInput): Promise<ProjectScene> {
+    return this.repository.updateSceneInline(input);
   }
 }
 

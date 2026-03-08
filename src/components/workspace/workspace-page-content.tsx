@@ -61,7 +61,7 @@ function ImportProjectButton({ onSuccess }: { onSuccess: () => void }): ReactEle
       >
         {importing ? 'Importing…' : 'Import JSON backup'}
       </button>
-      <input accept=".json" className="hidden" onChange={handleImport} ref={fileInputRef} type="file" />
+      <input aria-hidden="true" accept=".json" className="hidden" onChange={handleImport} ref={fileInputRef} type="file" />
       {error ? (
         <p aria-live="polite" className="text-xs text-destructive" role="alert">
           {error}

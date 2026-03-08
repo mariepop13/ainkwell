@@ -74,7 +74,7 @@ function SceneRow({
             onChange={(e) => {
               void actions.moveSceneToChapter(scene.id, e.target.value);
             }}
-            className="border rounded px-1.5 py-0.5 bg-background focus:outline-none"
+            className="border rounded px-1.5 py-0.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value="" disabled>—</option>
             {chapters

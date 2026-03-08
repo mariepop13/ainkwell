@@ -81,10 +81,46 @@ export type UpdateProjectInput = {
   stats?: Partial<ProjectStats>;
 };
 
+export type ReorderSceneInput = {
+  projectId: string;
+  sceneId: string;
+  targetChapterId: string;
+  targetIndex: number;
+};
+
+export type UpdateSceneInlineInput = {
+  projectId: string;
+  sceneId: string;
+  title?: string;
+  status?: SceneStatus;
+  synopsis?: string;
+};
+
 export type ProjectExport = {
   version: 1;
   exportedAt: string;
   project: WritingProject;
   bible: unknown | null;
   sessions: unknown | null;
+};
+
+export type ManuscriptScene = {
+  id: string;
+  title: string;
+  content: string;
+  wordCount: number;
+};
+
+export type ManuscriptChapter = {
+  id: string;
+  title: string;
+  chapterIndex: number;
+  scenes: ManuscriptScene[];
+  wordCount: number;
+};
+
+export type Manuscript = {
+  projectTitle: string;
+  chapters: ManuscriptChapter[];
+  totalWordCount: number;
 };

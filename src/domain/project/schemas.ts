@@ -244,6 +244,27 @@ export const projectStorageSchema = z.object({
   projects: z.array(writingProjectSchema),
 });
 
+export const reorderSceneInputSchema = z.object({
+  projectId: projectIdSchema,
+  sceneId: sceneIdSchema,
+  targetChapterId: chapterIdSchema,
+  targetIndex: z.number().int().min(0),
+});
+
+export const updateSceneInlineInputSchema = z
+  .object({
+    projectId: projectIdSchema,
+    sceneId: sceneIdSchema,
+    title: sceneTitleSchema.optional(),
+    status: sceneStatusSchema.optional(),
+    synopsis: z.string().max(300).optional(),
+  })
+  .refine(
+    ({ title, status, synopsis }) =>
+      title !== undefined || status !== undefined || synopsis !== undefined,
+    'At least one scene field must be provided.',
+  );
+
 export const projectExportSchema = z.object({
   version: z.literal(1),
   exportedAt: z.string().datetime({ offset: true }),
