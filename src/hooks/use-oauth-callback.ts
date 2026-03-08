@@ -55,7 +55,7 @@ export function useOAuthCallback(): UseOAuthCallbackResult {
         const service = createAiSettingsService();
         service.saveKey(apiKey);
         setStatus('success');
-        timeoutId = setTimeout(() => router.push('/workspace'), REDIRECT_DELAY_MS);
+        timeoutId = setTimeout(() => router.replace('/workspace'), REDIRECT_DELAY_MS);
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Unknown error');
         setStatus('error');
