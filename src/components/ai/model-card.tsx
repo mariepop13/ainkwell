@@ -28,8 +28,8 @@ export function ModelCard({ model, isSelected, onSelect }: ModelCardProps): Reac
           </div>
           <p className="text-xs text-muted-foreground mb-1">{extractProvider(model.id)}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-            <span>💰 {formatPrice(model.pricing.prompt, model.pricing.completion)}</span>
-            <span>📏 {formatContextLength(model.context_length)}</span>
+            <span><span aria-hidden="true">💰</span><span className="sr-only">Price:</span> {formatPrice(model.pricing.prompt, model.pricing.completion)}</span>
+            <span><span aria-hidden="true">📏</span><span className="sr-only">Context:</span> {formatContextLength(model.context_length)}</span>
           </div>
         </div>
       </div>

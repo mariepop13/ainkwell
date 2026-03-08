@@ -100,8 +100,8 @@ export function SceneToolbar(props: SceneToolbarProps): ReactElement {
           <h1 className="text-2xl font-headline font-bold">{props.title}</h1>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <SceneStatusBadge status={props.status} />
-            <span aria-live="polite">{props.wordCount} words</span>
-            <span aria-live="polite">{getSaveStateLabel(props)}</span>
+            <span>{props.wordCount} words</span>
+            <span aria-live="polite" role="status">{getSaveStateLabel(props)}</span>
           </div>
         </div>
 

@@ -8,8 +8,8 @@ function CallbackContent(): ReactElement {
 
   if (status === 'success') {
     return (
-      <div className="flex flex-col items-center gap-3 text-center">
-        <span className="text-4xl">✓</span>
+      <div aria-live="polite" className="flex flex-col items-center gap-3 text-center">
+        <span aria-hidden="true" className="text-4xl">✓</span>
         <p className="font-medium">OpenRouter connected!</p>
         <p className="text-sm text-muted-foreground">Redirecting to workspace…</p>
       </div>
@@ -18,8 +18,8 @@ function CallbackContent(): ReactElement {
 
   if (status === 'error') {
     return (
-      <div className="flex flex-col items-center gap-3 text-center">
-        <span className="text-4xl">✗</span>
+      <div aria-live="polite" className="flex flex-col items-center gap-3 text-center">
+        <span aria-hidden="true" className="text-4xl">✗</span>
         <p className="font-medium text-destructive">Connection failed</p>
         {errorMessage ? (
           <p className="text-sm text-muted-foreground">{errorMessage}</p>
@@ -35,7 +35,7 @@ function CallbackContent(): ReactElement {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 text-center">
+    <div aria-live="polite" className="flex flex-col items-center gap-3 text-center">
       <p className="text-sm text-muted-foreground">Connecting to OpenRouter…</p>
     </div>
   );

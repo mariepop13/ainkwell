@@ -73,7 +73,7 @@ export const SceneBeatPanel = memo(function SceneBeatPanel({
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs font-medium text-muted-foreground">Beats</label>
+              <p className="text-xs font-medium text-muted-foreground">Beats</p>
               <button
                 className="text-xs text-primary hover:underline disabled:opacity-50"
                 disabled={beats.length >= maxBeatsPerScene}
@@ -111,7 +111,7 @@ export const SceneBeatPanel = memo(function SceneBeatPanel({
                     onClick={() => removeBeat(beat.id)}
                     type="button"
                   >
-                    ✕
+                    <span aria-hidden="true">✕</span>
                   </button>
                 </li>
               ))}
