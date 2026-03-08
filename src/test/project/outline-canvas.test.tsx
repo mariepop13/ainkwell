@@ -158,7 +158,7 @@ describe('OutlineCanvas', () => {
     );
 
     const openLink = screen.getByRole('link', { name: /Open full editor/i });
-    expect(openLink).toHaveAttribute('href', `/workspace/${projectId}/scene/${sceneId1}`);
+    expect(openLink).toHaveAttribute('href', `/workspace/${projectId}/scene/${sceneId1}?from=outline`);
   });
 
   it('shows actionError when prop is set', () => {

@@ -169,7 +169,7 @@ function ChapterRow({
             aria-label="Move chapter up"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 text-xs"
           >
-            ↑
+            <span aria-hidden="true">↑</span>
           </button>
           <button
             type="button"
@@ -178,7 +178,7 @@ function ChapterRow({
             aria-label="Move chapter down"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 text-xs"
           >
-            ↓
+            <span aria-hidden="true">↓</span>
           </button>
           <button
             type="button"
@@ -186,7 +186,7 @@ function ChapterRow({
             aria-label="Rename chapter"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground text-xs"
           >
-            ✎
+            <span aria-hidden="true">✎</span>
           </button>
           <button
             type="button"
@@ -195,7 +195,7 @@ function ChapterRow({
             aria-label="Delete chapter"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-destructive disabled:opacity-30 text-xs"
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
       </div>

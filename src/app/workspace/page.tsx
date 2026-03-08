@@ -2,10 +2,13 @@
 
 import type { Dispatch, ReactElement, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AiSettingsService } from '@/application/ai/ai-settings-service';
 import { createProjectService } from '@/application/project/project-service';
 import type { ProjectService } from '@/application/project/project-service';
+import { AiSettingsPanel } from '@/components/ai/ai-settings-panel';
 import { WorkspacePageContent } from '@/components/workspace/workspace-page-content';
 import type { ProjectFormValues } from '@/components/workspace/project-form';
+import { LocalAiSettingsRepository } from '@/data/ai/local-ai-settings-repository';
 import { LocalProjectRepository } from '@/data/project/local-project-repository';
 import type { WritingProject } from '@/domain/project/types';
 
@@ -189,6 +192,7 @@ function useWorkspacePageState(service: ProjectService): WorkspacePageState {
 
 export default function WorkspacePage(): ReactElement {
   const service = useMemo(() => createProjectService(new LocalProjectRepository()), []);
+  const aiSettingsService = useMemo(() => new AiSettingsService(new LocalAiSettingsRepository()), []);
   const workspaceState = useWorkspacePageState(service);
   const { loadProjects } = workspaceState;
 
@@ -198,6 +202,7 @@ export default function WorkspacePage(): ReactElement {
 
   return (
     <WorkspacePageContent
+      aiSettingsPanel={<AiSettingsPanel service={aiSettingsService} />}
       editingProjectId={workspaceState.editingProjectId}
       errorMessage={workspaceState.errorMessage}
       loading={workspaceState.loading}

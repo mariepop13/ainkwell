@@ -88,7 +88,7 @@ export function InlineSceneEditor({
         className="w-full resize-none rounded border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
       />
       <Link
-        href={`/workspace/${projectId}/scene/${scene.id}`}
+        href={`/workspace/${projectId}/scene/${scene.id}?from=outline`}
         className="self-start text-xs text-primary hover:underline"
       >
         Open full editor
