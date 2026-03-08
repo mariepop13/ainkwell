@@ -30,6 +30,7 @@ import { useWritingSession } from '@/hooks/use-writing-session';
 type SceneEditorShellProps = {
   projectId: string;
   sceneId: string;
+  backTo?: 'outline' | 'workspace';
   language?: string;
   service?: SceneEditorServicePort;
   writingService?: WritingSessionService;
@@ -149,14 +150,25 @@ type SceneEditorNavigationProps = {
   projectId: string;
   previousSceneId: string | null;
   nextSceneId: string | null;
+  backTo: 'outline' | 'workspace';
 };
 
 const SceneEditorNavigation = memo(function SceneEditorNavigation(props: SceneEditorNavigationProps): ReactElement {
+  const sceneHref = (sceneId: string): string =>
+    `/workspace/${props.projectId}/scene/${sceneId}${props.backTo === 'outline' ? '?from=outline' : ''}`;
+
+  const backHref =
+    props.backTo === 'outline'
+      ? `/workspace/${props.projectId}/outline`
+      : `/workspace/${props.projectId}`;
+
+  const backLabel = props.backTo === 'outline' ? 'Back to outline' : 'Back to workspace';
+
   return (
     <nav className="flex items-center justify-between">
       {props.previousSceneId ? (
         <Link
-          href={`/workspace/${props.projectId}/scene/${props.previousSceneId}`}
+          href={sceneHref(props.previousSceneId)}
           className="inline-flex rounded-md border px-3 py-2 text-sm font-medium"
         >
           Previous
@@ -167,13 +179,13 @@ const SceneEditorNavigation = memo(function SceneEditorNavigation(props: SceneEd
         </button>
       )}
 
-      <Link href={`/workspace/${props.projectId}`} className="inline-flex rounded-md border px-3 py-2 text-sm font-medium">
-        Back to workspace
+      <Link href={backHref} className="inline-flex rounded-md border px-3 py-2 text-sm font-medium">
+        {backLabel}
       </Link>
 
       {props.nextSceneId ? (
         <Link
-          href={`/workspace/${props.projectId}/scene/${props.nextSceneId}`}
+          href={sceneHref(props.nextSceneId)}
           className="inline-flex rounded-md border px-3 py-2 text-sm font-medium"
         >
           Next
@@ -273,6 +285,7 @@ function SessionTimerConnector({ onStart, onStop, fallbackIsRunning, fallbackEla
 type SceneEditorLoadedViewProps = {
   projectId: string;
   language: string;
+  backTo: 'outline' | 'workspace';
   sceneEditor: UseSceneEditorResult;
   onSessionStart: () => void;
   onSessionStop: () => Promise<void>;
@@ -349,6 +362,7 @@ const SceneEditorLoadedView = memo(function SceneEditorLoadedView(props: SceneEd
         projectId={props.projectId}
         previousSceneId={props.sceneEditor.previousSceneId}
         nextSceneId={props.sceneEditor.nextSceneId}
+        backTo={props.backTo}
       />
     </main>
   );
@@ -388,6 +402,7 @@ export function SceneEditorShell(props: SceneEditorShellProps): ReactElement {
     <SceneEditorLoadedView
       projectId={props.projectId}
       language={props.language ?? 'en'}
+      backTo={props.backTo ?? 'workspace'}
       sceneEditor={sceneEditor}
       onSessionStart={startSession}
       onSessionStop={handleSessionStop}
