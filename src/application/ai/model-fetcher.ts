@@ -1,16 +1,33 @@
+import { z } from 'zod';
+
 import type { OpenRouterModel } from '@/domain/ai/types';
 
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 const PRICE_PER_K = 1000;
 const PRICE_DECIMAL_PLACES = 3;
 
+const openRouterModelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().default(''),
+  context_length: z.number().nullable(),
+  pricing: z.object({
+    prompt: z.string(),
+    completion: z.string(),
+  }),
+});
+
+const openRouterResponseSchema = z.object({
+  data: z.array(openRouterModelSchema),
+});
+
 export async function fetchAvailableModels(apiKey: string): Promise<OpenRouterModel[]> {
   const response = await fetch(OPENROUTER_MODELS_URL, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!response.ok) throw new Error(`Failed to fetch models: ${response.status}`);
-  const data = (await response.json()) as { data: OpenRouterModel[] };
-  return data.data ?? [];
+  const parsed = openRouterResponseSchema.parse(await response.json());
+  return parsed.data;
 }
 
 export function formatPrice(prompt: string, completion: string): string {
