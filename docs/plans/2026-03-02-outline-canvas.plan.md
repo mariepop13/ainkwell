@@ -10,63 +10,63 @@ overview: |
 todos:
   - id: 1
     content: "Add reorderScene operation to ProjectRepository interface and LocalProjectRepository"
-    status: pending
+    status: done
     dependencies: []
   - id: 2
     content: "Add updateSceneInline operation (title + status + synopsis patch) to ProjectRepository and LocalProjectRepository"
-    status: pending
+    status: done
     dependencies: []
   - id: 3
     content: "Extend ChapterService with reorderScene and updateSceneInline methods"
-    status: pending
+    status: done
     dependencies: [1, 2]
   - id: 4
     content: "Add Zod schema and type for reorderSceneInput and updateSceneInlineInput"
-    status: pending
+    status: done
     dependencies: [1, 2]
   - id: 5
     content: "Build SceneCard component (title badge, status badge, synopsis preview, drag handle)"
-    status: pending
+    status: done
     dependencies: []
   - id: 6
     content: "Build InlineSceneEditor component (editable title, status selector, synopsis field)"
-    status: pending
+    status: done
     dependencies: [5]
   - id: 7
     content: "Build ChapterColumn component (header with chapter title, ordered list of SceneCards, empty drop zone)"
-    status: pending
+    status: done
     dependencies: [5, 6]
   - id: 8
     content: "Build OutlineCanvas component composing ChapterColumns with horizontal scroll and DnD context"
-    status: pending
+    status: done
     dependencies: [7]
   - id: 9
     content: "Build useOutlineCanvas hook — loads project, dispatches optimistic updates, calls services on drop/reorder/inline-edit"
-    status: pending
+    status: done
     dependencies: [3, 8]
   - id: 10
     content: "Create outline page at /workspace/[projectId]/outline"
-    status: pending
+    status: done
     dependencies: [8, 9]
   - id: 11
     content: "Add Outline Canvas link to project detail page navigation"
-    status: pending
+    status: done
     dependencies: [10]
   - id: 12
     content: "Write unit tests for reorderScene in LocalProjectRepository"
-    status: pending
+    status: done
     dependencies: [1]
   - id: 13
     content: "Write unit tests for updateSceneInline in LocalProjectRepository"
-    status: pending
+    status: done
     dependencies: [2]
   - id: 14
     content: "Write unit tests for useOutlineCanvas hook"
-    status: pending
+    status: done
     dependencies: [9]
   - id: 15
     content: "Write component test for OutlineCanvas (render, add scene, inline edit)"
-    status: pending
+    status: done
     dependencies: [10]
 ---
 
