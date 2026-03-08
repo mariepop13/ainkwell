@@ -251,13 +251,19 @@ export const reorderSceneInputSchema = z.object({
   targetIndex: z.number().int().min(0),
 });
 
-export const updateSceneInlineInputSchema = z.object({
-  projectId: projectIdSchema,
-  sceneId: sceneIdSchema,
-  title: sceneTitleSchema.optional(),
-  status: sceneStatusSchema.optional(),
-  synopsis: z.string().max(300).optional(),
-});
+export const updateSceneInlineInputSchema = z
+  .object({
+    projectId: projectIdSchema,
+    sceneId: sceneIdSchema,
+    title: sceneTitleSchema.optional(),
+    status: sceneStatusSchema.optional(),
+    synopsis: z.string().max(300).optional(),
+  })
+  .refine(
+    ({ title, status, synopsis }) =>
+      title !== undefined || status !== undefined || synopsis !== undefined,
+    'At least one scene field must be provided.',
+  );
 
 export const projectExportSchema = z.object({
   version: z.literal(1),

@@ -214,7 +214,7 @@ describe('useOutlineCanvas', () => {
     vi.mocked(sceneService.createScene).mockRejectedValueOnce(new Error('Disk full'));
 
     await act(async () => {
-      await result.current.handleCreateScene(chapterId, 'Broken Scene');
+      await result.current.handleCreateScene(chapterId, 'Broken Scene').catch(() => {});
     });
 
     expect(result.current.actionError).toBe('Disk full');

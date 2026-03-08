@@ -106,7 +106,13 @@ export function useOutlineCanvas({
   const [dragState, setDragState] = useState<DragInfo | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const inlineEditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  type PendingEdit = {
+    timer: ReturnType<typeof setTimeout>;
+    patch: InlineEditPatch;
+    snapshot: WritingProject;
+  };
+  const inlineEditPendingRef = useRef<Map<string, PendingEdit>>(new Map());
 
   const reload = useCallback(async (): Promise<void> => {
     try {
@@ -155,6 +161,10 @@ export function useOutlineCanvas({
 
   const handleInlineEdit = useCallback(
     (sceneId: string, patch: InlineEditPatch): void => {
+      if (!project) {
+        return;
+      }
+
       setProject((prev) => {
         if (!prev) {
           return prev;
@@ -169,18 +179,28 @@ export function useOutlineCanvas({
         };
       });
 
-      if (inlineEditDebounceRef.current) {
-        clearTimeout(inlineEditDebounceRef.current);
+      const pending = inlineEditPendingRef.current;
+      const existing = pending.get(sceneId);
+      if (existing) {
+        clearTimeout(existing.timer);
       }
-      inlineEditDebounceRef.current = setTimeout(() => {
+
+      const snapshot = existing?.snapshot ?? project;
+      const mergedPatch: InlineEditPatch = { ...(existing?.patch ?? {}), ...patch };
+
+      const timer = setTimeout(() => {
+        pending.delete(sceneId);
         void chapterService
-          .updateSceneInline({ projectId, sceneId, ...patch })
+          .updateSceneInline({ projectId, sceneId, ...mergedPatch })
           .catch((error) => {
+            setProject(snapshot);
             setActionError(toErrorMessage(error, 'Failed to update scene.'));
           });
       }, inlineEditDebounceMs);
+
+      pending.set(sceneId, { timer, patch: mergedPatch, snapshot });
     },
-    [chapterService, projectId],
+    [chapterService, project, projectId],
   );
 
   const handleDragStart = useCallback((info: DragInfo): void => {
@@ -269,6 +289,7 @@ export function useOutlineCanvas({
         await reload();
       } catch (error) {
         setActionError(toErrorMessage(error, 'Failed to create scene.'));
+        throw error;
       }
     },
     [projectId, reload, sceneService],
@@ -281,6 +302,7 @@ export function useOutlineCanvas({
         await reload();
       } catch (error) {
         setActionError(toErrorMessage(error, 'Failed to add chapter.'));
+        throw error;
       }
     },
     [chapterService, projectId, reload],

@@ -3,14 +3,18 @@ import { useState } from 'react';
 
 type ChapterFormProps = {
   initialTitle?: string;
+  titleLabel?: string;
   submitLabel: string;
+  errorText?: string;
   onSubmit: (title: string) => Promise<void>;
   onCancel?: () => void;
 };
 
 export function ChapterForm({
   initialTitle = '',
+  titleLabel = 'Chapter title',
   submitLabel,
+  errorText = 'Could not save chapter. Please try again.',
   onSubmit,
   onCancel,
 }: ChapterFormProps): ReactElement {
@@ -31,7 +35,7 @@ export function ChapterForm({
       await onSubmit(trimmedTitle);
       setTitle('');
     } catch {
-      setSubmitError('Could not save chapter. Please try again.');
+      setSubmitError(errorText);
     } finally {
       setIsSubmitting(false);
     }
@@ -46,8 +50,8 @@ export function ChapterForm({
         type="text"
         value={title}
         onChange={(e) => { setTitle(e.target.value); }}
-        placeholder="Chapter title"
-        aria-label="Chapter title"
+        placeholder={titleLabel}
+        aria-label={titleLabel}
         maxLength={120}
         required
         autoFocus

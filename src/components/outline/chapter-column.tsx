@@ -129,7 +129,9 @@ export function ChapterColumn({
         {isAddingScene ? (
           <ChapterForm
             initialTitle={`Scene ${nextSceneIndex}`}
+            titleLabel="Scene title"
             submitLabel="Add"
+            errorText="Could not save scene. Please try again."
             onSubmit={handleCreateScene}
             onCancel={() => { setIsAddingScene(false); }}
           />
